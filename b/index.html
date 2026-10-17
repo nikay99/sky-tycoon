@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#38bdf8">
+<title>Alpenflug Tycoon – Baue deine Airline ab Wien</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E✈️%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #eef6ff;
+  --card: #ffffff;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --brand: #0ea5e9;
+  --brand2: #2563eb;
+  --good: #16a34a;
+  --gold: #f59e0b;
+  --bad: #dc2626;
+  --radius: 14px;
+  --shadow: 0 2px 10px rgba(15, 40, 80, .08), 0 1px 2px rgba(15, 40, 80, .06);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  background: var(--bg); color: var(--ink);
+  user-select: none; -webkit-user-select: none;
+}
+button { font: inherit; cursor: pointer; }
+.hidden { display: none !important; }
+
+#app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+
+/* Kopfzeile */
+#top {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top));
+  background: linear-gradient(135deg, #0ea5e9, #2563eb); color: #fff;
+  box-shadow: 0 2px 12px rgba(37, 99, 235, .35); z-index: 5;
+}
+.brand { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.brand .logo { font-size: 22px; display: inline-block; transform: rotate(-20deg); }
+.brand b { display: block; font-size: 15px; line-height: 1; letter-spacing: .3px; }
+.brand small { display: block; font-size: 10px; opacity: .85; text-transform: uppercase; letter-spacing: 2px; }
+.money { text-align: center; flex: 1; }
+#cash { font-size: 24px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; text-shadow: 0 1px 0 rgba(0,0,0,.15); }
+#cash.bump { animation: bump .25s ease-out; }
+@keyframes bump { 40% { transform: scale(1.12); color: #fde68a; } }
+#rate { font-size: 12px; opacity: .9; font-variant-numeric: tabular-nums; }
+.hbtns { display: flex; align-items: center; gap: 6px; }
+.chip { background: rgba(255,255,255,.2); border-radius: 99px; padding: 3px 8px; font-size: 13px; font-weight: 700; }
+.icon-btn { background: rgba(255,255,255,.2); border: 0; border-radius: 10px; width: 36px; height: 36px; font-size: 18px; color: #fff; }
+
+#main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* Karte */
+#mapWrap { position: relative; flex: 0 0 42%; min-height: 220px; overflow: hidden; border-bottom: 3px solid #fff; }
+#map { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#map:active { cursor: grabbing; }
+.grid { stroke: rgba(255,255,255,.25); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.land { fill: #c9ecb4; stroke: #8fcf7a; stroke-width: 1.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.water { fill: #6fcbf7; stroke: #8fcf7a; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.route { fill: none; stroke: #2563eb; stroke-width: 2.5; stroke-dasharray: 6 5; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .75; animation: dash 1.2s linear infinite; }
+.route.mgr { stroke: #f59e0b; opacity: .9; }
+@keyframes dash { to { stroke-dashoffset: -11; } }
+.ap { cursor: pointer; }
+.ap .hit { fill: transparent; }
+.ap .ring { fill: rgba(255,255,255,.0); stroke: none; }
+.ap .dot { fill: #fff; stroke: #94a3b8; stroke-width: 2; }
+.ap .lbl { font-size: 10px; font-weight: 800; fill: #334155; paint-order: stroke; stroke: #fff; stroke-width: 3px; stroke-linejoin: round; }
+.ap.far .dot { fill: #e2e8f0; stroke: #cbd5e1; }
+.ap.far .lbl { fill: #94a3b8; }
+.ap.open .dot { fill: #2563eb; stroke: #fff; }
+.ap.canopen .dot { fill: #fff; stroke: #16a34a; stroke-width: 2.5; }
+.ap.canopen .ring { fill: rgba(22,163,74,.18); }
+.ap.hub .dot { fill: #ef4444; stroke: #fff; stroke-width: 2.5; }
+.ap.hub .lbl { font-size: 12px; fill: #b91c1c; }
+.ap.hub.waiting .ring, .ap.tuthint .ring { fill: rgba(239,68,68,.25); stroke: #ef4444; stroke-width: 1.5; animation: ping 1s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.ap.tuthint .ring { fill: rgba(245,158,11,.3); stroke: #f59e0b; }
+@keyframes ping { 0% { transform: scale(.6); opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
+.plane { cursor: pointer; }
+.plane .hit { fill: transparent; }
+.plane path { stroke: #fff; stroke-width: 1.2; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+.coinpop { font-size: 12px; font-weight: 800; fill: #15803d; paint-order: stroke; stroke: #fff; stroke-width: 3px; text-anchor: middle; pointer-events: none; }
+
+.mapctl { position: absolute; right: 8px; top: 8px; display: flex; gap: 4px; }
+.mapctl button { border: 0; background: rgba(255,255,255,.9); border-radius: 99px; padding: 5px 11px; font-size: 12px; font-weight: 700; color: #1e3a8a; box-shadow: var(--shadow); }
+.tut {
+  position: absolute; left: 8px; right: 8px; bottom: 8px; background: rgba(255,255,255,.96); border-radius: 12px; padding: 9px 12px;
+  font-size: 13px; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.18); border-left: 5px solid var(--gold); animation: slidein .35s ease-out; pointer-events: none;
+}
+@keyframes slidein { from { transform: translateY(20px); opacity: 0; } }
+
+/* Panel */
+#panel { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+#tabs { display: flex; background: #fff; box-shadow: var(--shadow); z-index: 2; }
+#tabs button { flex: 1; border: 0; background: none; padding: 7px 2px 6px; font-size: 18px; color: var(--muted); position: relative; border-bottom: 3px solid transparent; }
+#tabs button span { display: block; font-size: 11px; font-weight: 700; }
+#tabs button.on { color: var(--brand2); border-bottom-color: var(--brand2); }
+#tabs .dot { position: absolute; top: 5px; right: 22%; width: 9px; height: 9px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 2px #fff; }
+.tabs { flex: 1; min-height: 0; position: relative; }
+.tab { display: none; position: absolute; inset: 0; overflow-y: auto; padding: 10px 10px calc(16px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+.tab.on { display: block; }
+
+.btn { border: 0; border-radius: 10px; padding: 9px 14px; font-weight: 800; background: #e2e8f0; color: #334155; transition: transform .08s, filter .15s; white-space: nowrap; }
+.btn:active:not(:disabled) { transform: scale(.94); }
+.btn.primary { background: linear-gradient(180deg, #22c55e, #16a34a); color: #fff; box-shadow: 0 3px 0 #15803d; }
+.btn.poor { background: #e2e8f0 !important; color: #94a3b8 !important; box-shadow: none !important; }
+.btn.small { padding: 6px 10px; font-size: 13px; }
+.btn.ghost { background: transparent; border: 2px dashed #cbd5e1; color: #475569; }
+.btn.danger { color: var(--bad); border-color: #fca5a5; }
+.btn:disabled { opacity: .6; cursor: default; }
+.btn.go { background: linear-gradient(180deg, #fb923c, #ea580c); color: #fff; box-shadow: 0 3px 0 #c2410c; min-width: 92px; }
+.btn.go:disabled { background: #e2e8f0; color: #94a3b8; box-shadow: none; opacity: 1; }
+.btn.go.pulse { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.07); box-shadow: 0 3px 0 #c2410c, 0 0 0 6px rgba(251,146,60,.25); } }
+.btn.mgrtag { background: #fef3c7; color: #92400e; opacity: 1 !important; }
+.btn.mgrbtn { background: #fef3c7; color: #92400e; }
+.btn.mgrbtn.primary { background: linear-gradient(180deg, #fbbf24, #f59e0b); color: #fff; box-shadow: 0 3px 0 #b45309; }
+
+.rcard { background: var(--card); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; box-shadow: var(--shadow); cursor: pointer; border: 2px solid transparent; }
+.rcard.mgr { border-color: #fde68a; }
+.rcard.tapped { animation: tap .15s ease-out; }
+@keyframes tap { 50% { transform: scale(.985); background: #f0f9ff; } }
+.rhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rhead b { font-size: 15px; }
+.rhead small, .drow small, .prow small, .tinfo small, .uinfo small { display: block; color: var(--muted); font-size: 12px; }
+.pbar { display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+.track { flex: 1; height: 20px; border-radius: 99px; background: #e0f2fe; position: relative; overflow: hidden; }
+.fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #38bdf8, #2563eb); border-radius: 99px; }
+.track .lbl { position: absolute; inset: 0; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #0c4a6e; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+.pbar .x { border: 0; background: none; color: #94a3b8; font-size: 13px; padding: 2px 4px; }
+.noplane { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.rfoot { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.sect { font-size: 14px; margin: 16px 2px 8px; color: #1e3a8a; }
+.sect small { font-weight: 400; color: var(--muted); }
+.drow, .prow { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; box-shadow: var(--shadow); }
+.drow > div, .prow > span { flex: 1; min-width: 0; }
+.drow.hint { outline: 3px solid var(--gold); animation: glow 1.2s infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 0 6px rgba(245,158,11,.3); } }
+.picon { flex: none; display: block; }
+.empty { text-align: center; color: var(--muted); padding: 16px; background: #fff; border-radius: 12px; }
+.empty.small { padding: 10px; font-size: 13px; }
+
+.tcard, .ucard { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: var(--radius); padding: 10px; margin-bottom: 8px; box-shadow: var(--shadow); }
+.tic { width: 52px; height: 52px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+.tinfo, .uinfo { flex: 1; min-width: 0; }
+.cnt, .lv { font-size: 12px; color: var(--brand2); font-weight: 700; }
+.stats { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 11px; color: #475569; margin-top: 3px; }
+.btn.buy { min-width: 92px; }
+.uic { font-size: 28px; width: 48px; height: 48px; border-radius: 12px; background: #f1f5f9; display: grid; place-items: center; flex: none; }
+.statline { font-size: 12px; color: #475569; background: #fff; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+
+.prestige { background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: var(--radius); padding: 12px; display: grid; gap: 6px; }
+.prestige small { color: #78350f; }
+.agrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.ach { background: #fff; border-radius: 12px; padding: 8px; box-shadow: var(--shadow); opacity: .55; filter: grayscale(1); }
+.ach.got { opacity: 1; filter: none; border: 2px solid #fde68a; }
+.ach span { font-size: 20px; }
+.ach b { display: block; font-size: 13px; }
+.ach small { color: var(--muted); font-size: 11px; }
+.stats2 { margin: 14px 2px; font-size: 12px; color: #475569; }
+
+/* Toasts, Modal, Effekte */
+#toasts { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); display: grid; gap: 6px; z-index: 50; width: min(92vw, 420px); pointer-events: none; }
+.toast { background: #0f172a; color: #fff; padding: 9px 14px; border-radius: 12px; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: tin .25s ease-out; transition: opacity .4s, transform .4s; }
+.toast.good { background: #065f46; }
+.toast.bad { background: #991b1b; }
+.toast.ach { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.toast.out { opacity: 0; transform: translateY(-10px); }
+@keyframes tin { from { opacity: 0; transform: translateY(-12px) scale(.96); } }
+#modal { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: grid; place-items: center; z-index: 40; padding: 16px; animation: fade .2s; }
+@keyframes fade { from { opacity: 0; } }
+.mbox { background: #fff; border-radius: 18px; padding: 16px; width: min(420px, 100%); max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.3); animation: pop .25s cubic-bezier(.2,1.4,.4,1); }
+@keyframes pop { from { transform: scale(.85); opacity: 0; } }
+.mbox h3 { margin: 0 0 10px; }
+#mBody p { margin: 6px 0; }
+#mBtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.kv { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+.kv b { display: flex; align-items: center; gap: 4px; }
+.warn { background: #fef2f2; color: #991b1b; padding: 8px; border-radius: 8px; font-size: 13px; }
+.picker h4 { margin: 10px 0 6px; font-size: 13px; color: var(--muted); }
+.bigmoney { font-size: 32px; font-weight: 900; color: var(--good); text-align: center; margin: 12px 0; }
+.muted { color: var(--muted); font-size: 12px; }
+.floatdom { position: fixed; pointer-events: none; font-size: 22px; z-index: 60; transform: translate(-50%, -50%); animation: up .8s ease-out forwards; }
+@keyframes up { to { transform: translate(-50%, -160%) scale(1.3); opacity: 0; } }
+.confetti { position: fixed; top: 30%; width: 8px; height: 12px; border-radius: 2px; z-index: 70; pointer-events: none; animation: conf 1.6s cubic-bezier(.2,.6,.4,1) forwards; }
+@keyframes conf { 0% { transform: translate(0, 0) rotate(0); } 30% { transform: translate(calc(var(--dx) * .6), -120px) rotate(200deg); } 100% { transform: translate(var(--dx), 60vh) rotate(720deg); opacity: 0; } }
+
+/* Desktop */
+@media (min-width: 900px) {
+  #main { flex-direction: row; }
+  #mapWrap { flex: 1; border-bottom: 0; border-right: 3px solid #fff; }
+  #panel { flex: 0 0 430px; }
+  #cash { font-size: 28px; }
+  .brand b { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .route, .btn.go.pulse, .ap .ring { animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="brand"><span class="logo">✈</span><div><b>Alpenflug</b><small>Tycoon</small></div></div>
+    <div class="money">
+      <div id="cash">0 €</div>
+      <div id="rate">+0 €/s</div>
+    </div>
+    <div class="hbtns">
+      <span id="stars" class="chip" title="Investoren-Sterne">⭐ 0</span>
+      <button id="sound" class="icon-btn" aria-label="Ton an/aus">🔊</button>
+    </div>
+  </header>
+  <main id="main">
+    <section id="mapWrap">
+      <svg id="map" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#7dd3fc"/><stop offset="1" stop-color="#38bdf8"/>
+          </linearGradient>
+        </defs>
+        <rect x="-2000" y="-2000" width="5200" height="4600" fill="url(#sea)"/>
+        <g id="gridL"></g>
+        <g id="landL"></g>
+        <g id="routesL"></g>
+        <g id="apL"></g>
+        <g id="planesL"></g>
+        <g id="fxL"></g>
+      </svg>
+      <div class="mapctl">
+        <button data-view="eu">Europa</button>
+        <button data-view="world">Welt</button>
+      </div>
+      <div id="tut" class="tut hidden"></div>
+    </section>
+    <section id="panel">
+      <nav id="tabs">
+        <button data-tab="routes" class="on">✈️<span>Routen</span></button>
+        <button data-tab="fleet">🛫<span>Flotte</span></button>
+        <button data-tab="upg">⚙️<span>Upgrades</span><i class="dot hidden" id="upgDot"></i></button>
+        <button data-tab="ach">🏆<span>Erfolge</span></button>
+      </nav>
+      <div class="tabs">
+        <div id="tab-routes" class="tab on"></div>
+        <div id="tab-fleet" class="tab"></div>
+        <div id="tab-upg" class="tab"></div>
+        <div id="tab-ach" class="tab"></div>
+      </div>
+    </section>
+  </main>
+  <div id="toasts"></div>
+  <div id="modal" class="hidden">
+    <div class="mbox">
+      <h3 id="mTitle"></h3>
+      <div id="mBody"></div>
+      <div id="mBtns"></div>
+    </div>
+  </div>
+</div>
+<script>
+// Spieldaten: Flughäfen, Flugzeugtypen, Upgrades, Erfolge, Kartenumrisse
+'use strict';
+
+const HUB = 'VIE';
+
+// pop = Nachfrage-Faktor des Ziels
+const AIRPORTS = [
+  { c: 'VIE', n: 'Wien', lon: 16.57, lat: 48.11, pop: 1 },
+  { c: 'GRZ', n: 'Graz', lon: 15.44, lat: 46.99, pop: 0.8 },
+  { c: 'SZG', n: 'Salzburg', lon: 13.0, lat: 47.79, pop: 0.9 },
+  { c: 'INN', n: 'Innsbruck', lon: 11.34, lat: 47.26, pop: 0.9 },
+  { c: 'BUD', n: 'Budapest', lon: 19.26, lat: 47.43, pop: 1 },
+  { c: 'PRG', n: 'Prag', lon: 14.26, lat: 50.1, pop: 1 },
+  { c: 'MUC', n: 'München', lon: 11.79, lat: 48.35, pop: 1.1 },
+  { c: 'ZRH', n: 'Zürich', lon: 8.55, lat: 47.46, pop: 1.1 },
+  { c: 'BER', n: 'Berlin', lon: 13.5, lat: 52.36, pop: 1.1 },
+  { c: 'FRA', n: 'Frankfurt', lon: 8.57, lat: 50.03, pop: 1.2 },
+  { c: 'CPH', n: 'Kopenhagen', lon: 12.65, lat: 55.62, pop: 1 },
+  { c: 'FCO', n: 'Rom', lon: 12.25, lat: 41.8, pop: 1.15 },
+  { c: 'AMS', n: 'Amsterdam', lon: 4.76, lat: 52.31, pop: 1.15 },
+  { c: 'CDG', n: 'Paris', lon: 2.55, lat: 49.01, pop: 1.25 },
+  { c: 'LHR', n: 'London', lon: -0.45, lat: 51.47, pop: 1.3 },
+  { c: 'IST', n: 'Istanbul', lon: 28.75, lat: 41.26, pop: 1.2 },
+  { c: 'ATH', n: 'Athen', lon: 23.94, lat: 37.94, pop: 1.1 },
+  { c: 'BCN', n: 'Barcelona', lon: 2.08, lat: 41.3, pop: 1.2 },
+  { c: 'MAD', n: 'Madrid', lon: -3.57, lat: 40.49, pop: 1.1 },
+  { c: 'CAI', n: 'Kairo', lon: 31.41, lat: 30.12, pop: 1 },
+  { c: 'DXB', n: 'Dubai', lon: 55.36, lat: 25.25, pop: 1.3 },
+  { c: 'DEL', n: 'Delhi', lon: 77.1, lat: 28.56, pop: 1.1 },
+  { c: 'JFK', n: 'New York', lon: -73.78, lat: 40.64, pop: 1.4 },
+  { c: 'PEK', n: 'Peking', lon: 116.6, lat: 40.08, pop: 1.2 },
+  { c: 'BKK', n: 'Bangkok', lon: 100.75, lat: 13.69, pop: 1.25 },
+  { c: 'HND', n: 'Tokio', lon: 139.78, lat: 35.55, pop: 1.35 },
+];
+
+const TIERS = [
+  { id: 'prop', n: 'Propeller', d: 'Klein & sparsam – ideal für kurze Hüpfer', seats: 19, range: 900, speed: 70, mult: 1, cost: 500, col: '#f59e0b' },
+  { id: 'rj', n: 'Regionaljet', d: 'Schnell zwischen Europas Städten', seats: 70, range: 2200, speed: 120, mult: 1.6, cost: 7500, col: '#10b981' },
+  { id: 'nb', n: 'Mittelstrecken-Jet', d: 'Der A320-artige Allrounder', seats: 180, range: 4500, speed: 180, mult: 2.5, cost: 90000, col: '#3b82f6' },
+  { id: 'wb', n: 'Langstrecken-Jet', d: 'Über Ozeane und Kontinente', seats: 300, range: 9500, speed: 250, mult: 4, cost: 1.2e6, col: '#8b5cf6' },
+  { id: 'jumbo', n: 'Jumbo', d: 'Die doppelstöckige Königin der Lüfte', seats: 450, range: 13000, speed: 270, mult: 8, cost: 1e7, col: '#ef4444' },
+];
+
+const UPGRADES = [
+  { id: 'ticket', n: 'Ticketpreise', ic: '🎫', d: '+15 % Erlös pro Stufe', base: 120, g: 2.0, max: 60 },
+  { id: 'catering', n: 'Bordverpflegung', ic: '🥨', d: '+10 % Erlös pro Stufe', base: 400, g: 2.1, max: 60 },
+  { id: 'turn', n: 'Schnellere Abfertigung', ic: '⏱️', d: '−15 % Bodenzeit pro Stufe', base: 200, g: 1.9, max: 12 },
+  { id: 'mkt', n: 'Marketing', ic: '📣', d: '+4 % Auslastung pro Stufe', base: 300, g: 2.2, max: 10 },
+  { id: 'crew', n: 'Crew-Training', ic: '🧑‍✈️', d: '+8 % Fluggeschwindigkeit pro Stufe', base: 800, g: 2.3, max: 40 },
+];
+
+// Erfolge: je +2 % Erlös dauerhaft
+const ACHIEVEMENTS = [
+  { id: 'f1', n: 'Jungfernflug', d: 'Schließe deinen ersten Flug ab', ok: s => s.flights >= 1 },
+  { id: 'f50', n: 'Vielflieger', d: '50 Flüge abgeschlossen', ok: s => s.flights >= 50 },
+  { id: 'f500', n: 'Luftbrücke', d: '500 Flüge abgeschlossen', ok: s => s.flights >= 500 },
+  { id: 'f5000', n: 'Dauerbetrieb', d: '5.000 Flüge abgeschlossen', ok: s => s.flights >= 5000 },
+  { id: 'r3', n: 'Netzwerker', d: '3 Routen eröffnet', ok: s => s.routes.length >= 3 },
+  { id: 'r10', n: 'Streckennetz', d: '10 Routen eröffnet', ok: s => s.routes.length >= 10 },
+  { id: 'r25', n: 'Ganz Europa und mehr', d: 'Alle 25 Ziele angeflogen', ok: s => s.routes.length >= 25 },
+  { id: 'p5', n: 'Kleine Flotte', d: '5 Flugzeuge besitzen', ok: s => s.planes.length >= 5 },
+  { id: 'p20', n: 'Große Flotte', d: '20 Flugzeuge besitzen', ok: s => s.planes.length >= 20 },
+  { id: 'm1', n: 'Chefetage', d: 'Ersten Manager eingestellt', ok: s => s.routes.some(r => r.mgr) },
+  { id: 'e10k', n: 'Erste Zehntausend', d: '10.000 € verdient', ok: s => s.total >= 1e4 },
+  { id: 'e1m', n: 'Millionär', d: '1 Mio € verdient', ok: s => s.total >= 1e6 },
+  { id: 'e1b', n: 'Milliardär', d: '1 Mrd € verdient', ok: s => s.total >= 1e9 },
+  { id: 'jfk', n: 'Über den großen Teich', d: 'Route nach New York eröffnet', ok: s => s.routes.some(r => r.c === 'JFK') },
+  { id: 'hnd', n: 'Fernost', d: 'Route nach Tokio eröffnet', ok: s => s.routes.some(r => r.c === 'HND') },
+  { id: 'jumbo', n: 'Königin der Lüfte', d: 'Einen Jumbo gekauft', ok: s => s.planes.some(p => p.t === 'jumbo') },
+  { id: 'tap', n: 'Fleißiger Disponent', d: '500-mal Flüge beschleunigt', ok: s => s.taps >= 500 },
+];
+
+// Grobe, stilisierte Landmassen [lon, lat]
+const LAND = [
+  // Afrika + Eurasien
+  [[-6,36],[-9,37],[-9,43],[-1.5,43.5],[-1.2,46],[-4.5,48],[-1.5,48.7],[1.5,50],[4,51.3],[5,53],[8.5,53.8],[8.3,57],[10.5,57.7],[10.5,54.5],[14,54],[19,54.5],[21,55.5],[21,57],[24,57.5],[24,59.5],[30,60],[22.5,60.3],[21.5,61.5],[21.5,63.5],[25,65],[22,65.8],[17,62.5],[19,60],[16.5,57],[14,55.5],[12.5,56],[11,58.8],[8,58],[5,59],[5,62],[12,66],[15,68.5],[20,70],[28,71],[40,67],[44,68],[60,69],[70,73],[80,73],[100,76],[130,72],[160,70],[160,60],[156,51],[150,59],[142,59],[135,54],[141,52],[140,48],[135,43],[129,41],[129,35],[126.5,34.5],[126,37.5],[124.5,40],[121,40.8],[122,39],[118,38.5],[119,37],[122.5,37],[120,35],[121.8,31],[122,29],[119.5,25.5],[116,22.8],[113,22.2],[110,21],[108,21.5],[106,20],[106,17.5],[109,15],[109,11.5],[105,8.6],[103.5,10.5],[100,13.5],[100.5,7.5],[103.5,4],[104,1.3],[101,3],[98,8],[98.5,16],[94.5,16.5],[94,19],[92,22],[90,22],[86.5,20],[80,15.5],[80,10],[77.5,8],[74.5,14],[73,20],[72.5,22.5],[68.5,23.5],[66.5,25.5],[61.5,25.2],[57,25.8],[56.5,27],[54,26.8],[51.5,27.9],[50,30],[48,30],[48.5,28.5],[50.5,26.2],[51.5,24.5],[54,24],[56,26],[56.5,24.5],[59.8,22.5],[57.8,18.9],[55,17],[52,15.8],[48,14],[43.5,12.7],[42.6,16],[40,20.5],[38.5,23.5],[35,28],[34.5,29.5],[32.5,29.9],[33.5,27],[35.5,23.5],[37.5,18.5],[39.5,15.5],[43.3,11.5],[51.2,11.8],[51,10.5],[48,4.5],[41.5,-1.7],[39.5,-6],[40.5,-11],[35,-20],[20,-30],[12,-17],[13.5,-11],[12,-5],[9.5,-0.5],[9.5,4],[5.5,4.3],[1,6],[-4,5.2],[-7.5,4.4],[-11,6.9],[-13.3,9],[-16.8,12.5],[-17.5,14.7],[-16.5,19.5],[-17,21],[-13,27.5],[-9.8,29.5],[-9.5,32.5],[-6.8,34],[-5.9,35.8]],
+  // Großbritannien
+  [[-5.7,50],[-3,50.6],[1.4,51.2],[1.7,52.7],[0,53.5],[-1.5,55],[-2,56],[-3.8,57.6],[-3,58.6],[-5,58.6],[-6.2,56.7],[-5.5,55.3],[-3,54.9],[-3.3,53.4],[-4.6,53.3],[-4.2,52.3],[-5.2,51.7],[-3.2,51.4]],
+  // Irland
+  [[-6,52.2],[-6,54],[-7.5,55.2],[-10,54.2],[-10.3,51.6],[-8,51.6]],
+  // Island
+  [[-22,64],[-18,66.3],[-14,65.5],[-14.5,64.3],[-19,63.4]],
+  // Japan
+  [[130,31.3],[131.5,31.5],[132,33.8],[135,33.5],[136.8,34.4],[139.8,34.9],[140.8,35.7],[141,38],[142,39.5],[141.4,41.4],[140,40.7],[140,39],[139,38],[136.8,37.3],[136,35.7],[133,35.5],[131,34.4],[129.8,33.3]],
+  [[140,41.5],[141.6,42.5],[143.3,42],[145.5,43.3],[144.5,44],[141.9,45.5],[141.4,43.3]],
+  // Taiwan, Sri Lanka, Sumatra, Borneo
+  [[120.2,22.6],[120.9,22],[121.9,25],[121,25.1],[120.1,23.6]],
+  [[79.8,7],[80,9.7],[81.8,7.5],[81,6.1]],
+  [[95.3,5.6],[98,4],[104,-1],[106,-5.8],[102,-4],[97,1.5]],
+  [[109,1.5],[111,2.6],[116,7],[119,5],[118,1],[116,-3.5],[110,-3]],
+  // Nordamerika
+  [[-100,72],[-80,73],[-62,67],[-61,60],[-55,52],[-56,49.5],[-59.5,47.5],[-64,49],[-66,48],[-61,45.5],[-66,44.5],[-70,43.5],[-70,41.7],[-74,40.5],[-75,38.5],[-76,37],[-75.5,35.2],[-78,33.8],[-81,31.5],[-80,27],[-80.5,25.2],[-82,26.5],[-83,29.5],[-86,30.3],[-90,29.2],[-97.5,27.5],[-98,22],[-105,22],[-110,30]],
+  [[-59.3,47.6],[-52.7,46.8],[-53,49.5],[-55.6,51.6],[-57.5,50.5]],
+  [[-73,80],[-20,82],[-20,70],[-42,60],[-50,62],[-55,68],[-60,76]],
+  [[-85,21.9],[-82,23.1],[-77,21.8],[-74.2,20.2],[-77.5,19.9],[-80,21.7]],
+];
+
+// Binnenmeere (über die Landmasse gezeichnet)
+const WATER = [
+  // Mittelmeer
+  [[-5.6,36],[-4.5,36.7],[-2,36.7],[0,38.7],[0.2,40],[3,41.8],[3.2,43.3],[6,43],[8.8,44.4],[10.5,43],[12.3,41.7],[15.6,40],[15.7,38],[16.5,38.4],[17.2,39],[16.6,40.4],[18.5,40.2],[16,41.9],[13.6,43.6],[12.3,45.3],[13.7,45.6],[15,44.5],[17.5,43],[19.5,41.7],[19.5,40],[21,38.3],[21.7,36.8],[23,36.5],[22.8,38],[22.9,40.6],[24.5,40.9],[26.2,40.6],[26.6,39.5],[26.8,38.3],[27.4,37],[28.4,36.7],[30.5,36.6],[32.5,36.1],[35,36.6],[36.1,36.6],[35.9,35],[35.5,33.8],[34.9,32.5],[34.3,31.3],[32.3,31.2],[30,31.4],[25,32],[23,32.7],[20,32.1],[20,30.8],[18.5,30.5],[15.5,31.5],[15,32.5],[11,33.3],[10.2,35.6],[11,37],[9.8,37.3],[7,37],[3,36.8],[-1,35.2],[-2.2,35.1],[-5.3,35.8]],
+  // Schwarzes Meer
+  [[28,41.2],[29,41.2],[31.5,41.2],[35,42],[38,40.9],[41.5,41.5],[41.7,42.6],[39.5,44.2],[37.5,44.7],[38.5,45.5],[36.5,45.4],[33.5,44.5],[32.5,45.4],[33.5,46],[31,46.6],[30,45.2],[29.6,44.5],[28.6,43.7],[28,42.6]],
+  // Kaspisches Meer
+  [[47,44],[49,46.5],[52,46.8],[53,45.3],[51,44.5],[52.5,42],[53,40.5],[53.9,37.3],[51,36.8],[49,37.6],[49.5,40.2],[48.5,41.8]],
+];
+</script>
+<script>
+// Alpenflug Tycoon – Idle/Clicker Airline-Spiel
+(function () {
+'use strict';
+
+const $ = s => document.querySelector(s);
+const SVGNS = 'http://www.w3.org/2000/svg';
+const SAVE_KEY = 'alpenflug-save-v1';
+const OFFLINE_CAP = 2 * 3600; // Sekunden
+const START_CASH = 250;
+
+// ---------- Hilfsfunktionen ----------
+const AP = {};
+AIRPORTS.forEach(a => { a.x = (a.lon + 85) * 5; a.y = (72 - a.lat) * 6.5; AP[a.c] = a; });
+const TIER = {};
+TIERS.forEach((t, i) => { t.i = i; TIER[t.id] = t; });
+
+function haversine(a, b) {
+  const R = 6371, r = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+AIRPORTS.forEach(a => { a.d = Math.round(haversine(AP[HUB], a)); });
+const DESTS = AIRPORTS.filter(a => a.c !== HUB).sort((a, b) => a.d - b.d);
+
+function thousands(n) { return String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+function fmt(n) {
+  if (!isFinite(n)) return '∞';
+  const neg = n < 0; n = Math.abs(n);
+  let s;
+  if (n < 10000) s = thousands(n);
+  else {
+    const units = [[1e15, ' Brd'], [1e12, ' Bio'], [1e9, ' Mrd'], [1e6, ' Mio'], [1e3, 'k']];
+    for (const [v, l] of units) if (n >= v) {
+      const x = n / v;
+      s = (x < 100 ? (Math.floor(x * (x < 10 ? 100 : 10)) / (x < 10 ? 100 : 10)).toFixed(x < 10 ? 2 : 1) : String(Math.floor(x))).replace('.', ',') + l;
+      break;
+    }
+  }
+  return (neg ? '−' : '') + s;
+}
+const money = n => fmt(n) + ' €';
+const km = n => thousands(n) + ' km';
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const svgEl = (tag, attrs) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const PLANE_PATH = 'M9,0 L3,-1.4 L0,-7.5 L-2,-7.5 L-0.5,-1.4 L-5,-1.2 L-7,-3.6 L-8.5,-3.6 L-7.4,0 L-8.5,3.6 L-7,3.6 L-5,1.2 L-0.5,1.4 L-2,7.5 L0,7.5 L3,1.4 Z';
+const planeIcon = (col, size = 22) => `<svg class="picon" width="${size}" height="${size}" viewBox="-10 -10 20 20"><path d="${PLANE_PATH}" fill="${col}" stroke="#fff" stroke-width="1" transform="rotate(-45)"/></svg>`;
+
+// ---------- Spielstand ----------
+let S;
+function newState(keep) {
+  keep = keep || {};
+  return {
+    v: 1, cash: START_CASH, run: 0, total: keep.total || 0, flights: keep.flights || 0, taps: keep.taps || 0,
+    stars: keep.stars || 0, routes: [], nid: 2,
+    planes: [{ id: 1, t: 'prop', r: null, st: 'ready', p: 0, gt: 0 }],
+    upg: { ticket: 0, catering: 0, turn: 0, mkt: 0, crew: 0 },
+    ach: keep.ach || {}, tut: keep.tut || 0, muted: !!keep.muted, last: Date.now(),
+  };
+}
+function save() {
+  S.last = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* voll / privat */ }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || s.v !== 1 || !Array.isArray(s.planes)) return null;
+    const base = newState();
+    s.upg = Object.assign(base.upg, s.upg || {});
+    return Object.assign(base, s);
+  } catch (e) { return null; }
+}
+
+// ---------- Formeln ----------
+const achCount = () => Object.keys(S.ach).length;
+const revMult = () => Math.pow(1.15, S.upg.ticket) * (1 + 0.1 * S.upg.catering) * (1 + 0.02 * achCount()) * (1 + 0.1 * S.stars);
+const loadF = () => Math.min(1, 0.6 + 0.04 * S.upg.mkt);
+const ticket = d => 3 + 0.012 * d;
+const speedMult = () => Math.pow(1.08, S.upg.crew);
+const turnTime = () => 2.5 * Math.pow(0.85, S.upg.turn);
+const legRev = (c, t) => TIER[t].seats * ticket(AP[c].d) * loadF() * TIER[t].mult * AP[c].pop * revMult();
+const legTime = (c, t) => 1.5 + AP[c].d / (TIER[t].speed * speedMult());
+const routeCost = c => Math.round(40 + 0.0028 * AP[c].d * AP[c].d);
+const mgrCost = c => Math.round(300 + 3 * routeCost(c));
+const owned = t => S.planes.filter(p => p.t === t).length;
+const planeCost = t => Math.round(TIER[t].cost * Math.pow(1.2, owned(t) - (t === 'prop' ? 1 : 0)));
+const upgCost = u => Math.round(u.base * Math.pow(u.g, S.upg[u.id]));
+const minTierFor = d => TIERS.find(t => t.range >= d);
+const routeOf = c => S.routes.find(r => r.c === c);
+const planesOn = c => S.planes.filter(p => p.r === c);
+const hangar = () => S.planes.filter(p => !p.r);
+const starsAvail = () => Math.floor(Math.sqrt(S.run / 1e6));
+
+function idleRate() { // €/s aller Routen mit Manager
+  let r = 0;
+  for (const p of S.planes) {
+    if (!p.r || !routeOf(p.r) || !routeOf(p.r).mgr) continue;
+    r += 2 * legRev(p.r, p.t) / (2 * legTime(p.r, p.t) + 2 * turnTime());
+  }
+  return r;
+}
+
+// ---------- Sound (WebAudio, optional) ----------
+let actx = null;
+function beep(freq, dur, type, vol) {
+  if (S.muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, actx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(freq * 1.5, actx.currentTime + dur);
+    g.gain.setValueAtTime(vol || 0.06, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + dur);
+  } catch (e) { /* kein Audio */ }
+}
+let lastCoinSound = 0;
+const sCoin = () => { const n = performance.now(); if (n - lastCoinSound < 70) return; lastCoinSound = n; beep(880, 0.12, 'triangle', 0.05); };
+const sBuy = () => { beep(523, 0.1, 'square', 0.04); setTimeout(() => beep(784, 0.15, 'square', 0.04), 90); };
+const sTap = () => beep(300 + Math.random() * 80, 0.05, 'sine', 0.03);
+
+// ---------- Geldfluss ----------
+const earnLog = [];
+function earn(amount, offline) {
+  S.cash += amount; S.run += amount; S.total += amount;
+  if (!offline) earnLog.push([performance.now(), amount]);
+}
+function spend(cost) {
+  if (S.cash < cost) { toast('Nicht genug Geld 💸', 'bad'); beep(150, 0.15, 'sawtooth', 0.03); return false; }
+  S.cash -= cost; sBuy(); return true;
+}
+function currentRate() {
+  const now = performance.now();
+  while (earnLog.length && now - earnLog[0][0] > 20000) earnLog.shift();
+  const sum = earnLog.reduce((a, e) => a + e[1], 0);
+  const span = Math.min(20, (now - startT) / 1000);
+  return Math.max(span > 1 ? sum / span : 0, idleRate());
+}
+
+// ---------- Spielaktionen ----------
+function openRoute(c) {
+  if (routeOf(c)) return;
+  if (!spend(routeCost(c))) return;
+  S.routes.push({ c, mgr: false });
+  const p = bestHangarPlane(AP[c].d);
+  if (p) { p.r = c; p.st = 'ready'; p.gt = 0; toast(`Route Wien – ${AP[c].n} eröffnet! ${TIER[p.t].n} zugewiesen.`, 'good'); }
+  else toast(`Route nach ${AP[c].n} eröffnet – jetzt ein Flugzeug zuweisen!`, 'good');
+  if (S.tut === 0) S.tut = 1;
+  buildRoutesL(); renderAll(); checkAch();
+}
+function bestHangarPlane(d) {
+  return hangar().filter(p => TIER[p.t].range >= d).sort((a, b) => TIER[b.t].i - TIER[a.t].i)[0];
+}
+function buyPlane(t, assignTo) {
+  if (!spend(planeCost(t))) return null;
+  const p = { id: S.nid++, t, r: null, st: 'ready', p: 0, gt: 0 };
+  S.planes.push(p);
+  let target = assignTo;
+  if (!target) {
+    // längste leere Route in Reichweite – große Flugzeuge landen dort, wo sie gebraucht werden
+    const free = S.routes.filter(r => planesOn(r.c).length === 0 && AP[r.c].d <= TIER[t].range).sort((a, b) => AP[b.c].d - AP[a.c].d)[0];
+    if (free) target = free.c;
+  }
+  if (target) { p.r = target; toast(`Neuer ${TIER[t].n} fliegt jetzt nach ${AP[target].n}!`, 'good'); }
+  else toast(`Neuer ${TIER[t].n} steht im Hangar bereit.`, 'good');
+  renderAll(); checkAch();
+  return p;
+}
+function assign(p, c) { p.r = c; p.st = 'ready'; p.p = 0; p.gt = 0; sBuy(); renderAll(); }
+function unassign(p) { if (p.st !== 'ready') return; p.r = null; renderAll(); }
+function hireMgr(c) {
+  const r = routeOf(c);
+  if (!r || r.mgr) return;
+  if (!spend(mgrCost(c))) return;
+  r.mgr = true;
+  toast(`👔 Manager übernimmt Wien – ${AP[c].n}. Läuft jetzt automatisch!`, 'good');
+  if (S.tut < 5) S.tut = 5;
+  buildRoutesL(); renderAll(); checkAch();
+}
+function buyUpg(u) {
+  if (S.upg[u.id] >= u.max) return;
+  if (!spend(upgCost(u))) return;
+  S.upg[u.id]++;
+  if (S.tut === 3) S.tut = 4;
+  renderAll();
+}
+function dispatch(p) {
+  if (p.st !== 'ready' || !p.r) return false;
+  p.st = 'out'; p.p = 0;
+  if (S.tut === 1) S.tut = 2;
+  return true;
+}
+function dispatchRoute(c) {
+  let n = 0;
+  planesOn(c).forEach(p => { if (dispatch(p)) n++; });
+  if (n) beep(440, 0.12, 'triangle', 0.05);
+}
+function boostRoute(c, x, y) {
+  let any = false;
+  for (const p of planesOn(c)) {
+    if (p.st === 'out' || p.st === 'back') {
+      const lt = legTime(p.r, p.t);
+      p.p += Math.max(0.6, lt * 0.04) / lt; any = true;
+    } else if (p.st === 'turn') { p.gt -= 0.6; any = true; }
+  }
+  if (!any) return;
+  S.taps++;
+  sTap();
+  if (x != null) floatDom('⚡', x, y, 'zap');
+  if (S.tut === 2 && S.taps >= 5) S.tut = 3;
+}
+function prestige() {
+  const n = starsAvail();
+  if (n < 1) return;
+  modal('🚀 Neustart mit Investoren?', `<p>Du verkaufst deine Airline und startest neu in Wien. Dafür bekommst du <b>${n} ⭐ Investoren-Sterne</b> (+${n * 10} % Erlös für immer).</p><p>Erfolge und Sterne bleiben erhalten.</p>`,
+    [['Abbrechen', null], ['Neustart!', () => {
+      const keep = { total: S.total, flights: S.flights, taps: S.taps, stars: S.stars + n, ach: S.ach, tut: 9, muted: S.muted };
+      S = newState(keep); save(); buildRoutesL(); renderAll(); toast(`⭐ +${n} Sterne! Neuer Start, mehr Erlös.`, 'good');
+    }, 'primary']]);
+}
+
+// ---------- Simulation ----------
+function pay(p, atCode) {
+  const amt = legRev(p.r, p.t);
+  earn(amt);
+  S.flights++;
+  const a = AP[atCode];
+  floatMap('+' + money(amt), a.x, a.y);
+  sCoin();
+  bumpCash();
+}
+function step(dt) {
+  const tt = turnTime();
+  for (const p of S.planes) {
+    if (!p.r) continue;
+    const r = routeOf(p.r);
+    if (!r) { p.r = null; continue; }
+    switch (p.st) {
+      case 'ready':
+        p.gt -= dt;
+        if (r.mgr && p.gt <= 0) dispatch(p);
+        break;
+      case 'out':
+        p.p += dt / legTime(p.r, p.t);
+        if (p.p >= 1) { p.p = 1; pay(p, p.r); p.st = 'turn'; p.gt = tt; }
+        break;
+      case 'turn':
+        p.gt -= dt;
+        if (p.gt <= 0) { p.st = 'back'; p.p = 0; }
+        break;
+      case 'back':
+        p.p += dt / legTime(p.r, p.t);
+        if (p.p >= 1) { p.p = 0; pay(p, HUB); p.st = 'ready'; p.gt = tt; }
+        break;
+    }
+  }
+}
+
+// ---------- Karte ----------
+const svg = $('#map');
+const view = { cx: 475, cy: 165, w: 260 };
+let viewAnim = null;
+let upp = 1; // SVG-Einheiten pro Pixel
+function mapSize() { return { w: svg.clientWidth || 1, h: svg.clientHeight || 1 }; }
+function presetView(kind) {
+  const { w, h } = mapSize();
+  if (kind === 'world') return { cx: 590, cy: 250, w: Math.max(1180, 480 * w / h) };
+  return { cx: 478, cy: 165, w: Math.max(w < 600 ? 210 : 250, 165 * w / h) };
+}
+function clampView() {
+  view.w = Math.min(1400, Math.max(60, view.w));
+  view.cx = Math.min(1180, Math.max(0, view.cx));
+  view.cy = Math.min(520, Math.max(-20, view.cy));
+}
+function applyView() {
+  clampView();
+  const { w, h } = mapSize();
+  const vh = view.w * h / w;
+  svg.setAttribute('viewBox', `${view.cx - view.w / 2} ${view.cy - vh / 2} ${view.w} ${vh}`);
+  upp = view.w / w;
+  for (const g of apL.children) g.setAttribute('transform', `translate(${g.dataset.x},${g.dataset.y}) scale(${upp})`);
+}
+function animateView(target) { viewAnim = { from: { ...view }, to: target, t: 0 }; }
+
+function proj(lon, lat) { return [(lon + 85) * 5, (72 - lat) * 6.5]; }
+// Beschriftungs-Versatz, damit sich die Alpen-Flughäfen nicht überlappen
+const LABEL_POS = { INN: [0, 15, 'middle'], MUC: [0, -9, 'middle'], GRZ: [6, 13, 'start'], ZRH: [-7, 4, 'end'], FRA: [-7, -4, 'end'] };
+function buildMap() {
+  const grid = $('#gridL');
+  for (let lon = -80; lon <= 160; lon += 20) { const [x] = proj(lon, 0); grid.appendChild(svgEl('line', { x1: x, y1: -100, x2: x, y2: 600, class: 'grid' })); }
+  for (let lat = -10; lat <= 80; lat += 10) { const [, y] = proj(0, lat); grid.appendChild(svgEl('line', { x1: -100, y1: y, x2: 1300, y2: y, class: 'grid' })); }
+  const land = $('#landL');
+  const toD = poly => 'M' + poly.map(([lo, la]) => proj(lo, la).map(v => v.toFixed(1)).join(',')).join('L') + 'Z';
+  LAND.forEach(p => land.appendChild(svgEl('path', { d: toD(p), class: 'land' })));
+  WATER.forEach(p => land.appendChild(svgEl('path', { d: toD(p), class: 'water' })));
+  const apL = $('#apL');
+  AIRPORTS.forEach(a => {
+    const g = svgEl('g', { class: 'ap' + (a.c === HUB ? ' hub' : ''), 'data-ap': a.c });
+    g.dataset.x = a.x; g.dataset.y = a.y;
+    g.appendChild(svgEl('circle', { r: 16, class: 'hit' }));
+    g.appendChild(svgEl('circle', { r: a.c === HUB ? 13 : 9, class: 'ring' }));
+    g.appendChild(svgEl('circle', { r: a.c === HUB ? 7 : 4.5, class: 'dot' }));
+    const lp = LABEL_POS[a.c] || [a.c === HUB ? 10 : 7, -6, 'start'];
+    const t = svgEl('text', { x: lp[0], y: lp[1], 'text-anchor': lp[2], class: 'lbl' }); t.textContent = a.c;
+    g.appendChild(t);
+    apL.appendChild(g);
+  });
+}
+const apL = $('#apL'), routesL = $('#routesL'), planesL = $('#planesL'), fxL = $('#fxL');
+
+function ctrlPoint(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+  let nx = -dy / len, ny = dx / len;
+  if (ny > 0) { nx = -nx; ny = -ny; }
+  const k = Math.min(0.22 * len, 60);
+  return { x: (a.x + b.x) / 2 + nx * k, y: (a.y + b.y) / 2 + ny * k };
+}
+function bez(a, c, b, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y,
+    dx: 2 * u * (c.x - a.x) + 2 * t * (b.x - c.x), dy: 2 * u * (c.y - a.y) + 2 * t * (b.y - c.y),
+  };
+}
+function buildRoutesL() {
+  routesL.innerHTML = '';
+  const hub = AP[HUB];
+  for (const r of S.routes) {
+    const b = AP[r.c], c = ctrlPoint(hub, b);
+    routesL.appendChild(svgEl('path', { d: `M${hub.x},${hub.y} Q${c.x},${c.y} ${b.x},${b.y}`, class: 'route' + (r.mgr ? ' mgr' : '') }));
+  }
+  for (const g of apL.children) {
+    const c = g.dataset.ap;
+    g.classList.toggle('open', !!routeOf(c));
+  }
+  planeEls.forEach(e => e.remove()); planeEls.clear();
+}
+const planeEls = new Map();
+function drawPlanes() {
+  const hub = AP[HUB];
+  const alive = new Set();
+  for (const p of S.planes) {
+    if (!p.r || p.st === 'ready') continue;
+    alive.add(p.id);
+    let g = planeEls.get(p.id);
+    if (!g) {
+      g = svgEl('g', { class: 'plane', 'data-route': p.r });
+      g.appendChild(svgEl('circle', { r: 14, class: 'hit' }));
+      g.appendChild(svgEl('path', { d: PLANE_PATH, fill: TIER[p.t].col }));
+      planesL.appendChild(g); planeEls.set(p.id, g);
+    }
+    const b = AP[p.r], c = ctrlPoint(hub, b);
+    let pt, ang;
+    if (p.st === 'turn') { pt = { x: b.x, y: b.y }; const q = bez(hub, c, b, 1); ang = Math.atan2(-q.dy, -q.dx); }
+    else {
+      const t = p.st === 'out' ? p.p : 1 - p.p;
+      const q = bez(hub, c, b, Math.min(1, Math.max(0, t)));
+      pt = q; ang = Math.atan2(q.dy, q.dx) + (p.st === 'back' ? Math.PI : 0);
+    }
+    const s = upp * (0.85 + TIER[p.t].i * 0.12);
+    g.setAttribute('transform', `translate(${pt.x.toFixed(2)},${pt.y.toFixed(2)}) rotate(${(ang * 180 / Math.PI).toFixed(1)}) scale(${s.toFixed(3)})`);
+  }
+  for (const [id, g] of planeEls) if (!alive.has(id)) { g.remove(); planeEls.delete(id); }
+  // Hub pulsiert, wenn Flugzeuge auf Abflug warten
+  const waiting = S.planes.some(p => p.r && p.st === 'ready' && !routeOf(p.r).mgr);
+  apL.querySelector('[data-ap="' + HUB + '"]').classList.toggle('waiting', waiting);
+}
+const floaters = [];
+function floatMap(text, x, y) {
+  if (floaters.length > 40) return;
+  const t = svgEl('text', { class: 'coinpop', x, y });
+  t.textContent = '🪙 ' + text;
+  fxL.appendChild(t);
+  floaters.push({ el: t, x, y, age: 0, s: upp });
+}
+function updateFloaters(dt) {
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i]; f.age += dt;
+    const k = f.age / 1.3;
+    if (k >= 1) { f.el.remove(); floaters.splice(i, 1); continue; }
+    f.el.setAttribute('transform', `translate(${f.x},${f.y - 10 * upp - k * 40 * upp}) scale(${upp})`);
+    f.el.setAttribute('x', 0); f.el.setAttribute('y', 0);
+    f.el.style.opacity = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+  }
+}
+
+// Zeigersteuerung: ziehen, zoomen, tippen
+(function mapInput() {
+  const pts = new Map();
+  let drag = null, pinch = null, moved = false;
+  svg.addEventListener('pointerdown', e => {
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 1) { drag = { x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy, target: e.target }; moved = false; }
+    else if (pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, w: view.w }; moved = true;
+    }
+    viewAnim = null;
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size >= 2) {
+      const [a, b] = [...pts.values()];
+      view.w = pinch.w * pinch.d / (Math.hypot(a.x - b.x, a.y - b.y) || 1);
+      applyView();
+    } else if (drag) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.hypot(dx, dy) > 6) moved = true;
+      if (moved) { view.cx = drag.cx - dx * upp; view.cy = drag.cy - dy * upp; applyView(); }
+    }
+  });
+  const end = e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if (pts.size < 2) pinch = null;
+    if (pts.size === 0) {
+      if (drag && !moved && e.type === 'pointerup') {
+        const pl = drag.target.closest && drag.target.closest('[data-route]');
+        const ap = drag.target.closest && drag.target.closest('[data-ap]');
+        if (pl) boostRoute(pl.dataset.route, e.clientX, e.clientY);
+        else if (ap) airportSheet(ap.dataset.ap);
+      }
+      drag = null;
+    }
+  };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  svg.addEventListener('pointerleave', end);
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const mx = e.clientX - rect.left - rect.width / 2, my = e.clientY - rect.top - rect.height / 2;
+    const wx = view.cx + mx * upp, wy = view.cy + my * upp;
+    view.w *= Math.exp(e.deltaY * 0.0015);
+    clampView();
+    const nupp = view.w / rect.width;
+    view.cx = wx - mx * nupp; view.cy = wy - my * nupp;
+    viewAnim = null; applyView();
+  }, { passive: false });
+  document.querySelectorAll('.mapctl button').forEach(b => b.addEventListener('click', () => animateView(presetView(b.dataset.view))));
+})();
+
+// ---------- UI ----------
+function toast(msg, kind) {
+  const t = el('div', 'toast ' + (kind || ''), msg);
+  $('#toasts').appendChild(t);
+  setTimeout(() => t.classList.add('out'), 2600);
+  setTimeout(() => t.remove(), 3100);
+  while ($('#toasts').children.length > 3) $('#toasts').firstChild.remove();
+}
+function floatDom(text, x, y, cls) {
+  const f = el('div', 'floatdom ' + (cls || ''), text);
+  f.style.left = x + 'px'; f.style.top = y + 'px';
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 800);
+}
+let modalOpen = false;
+function modal(title, body, buttons) {
+  $('#mTitle').innerHTML = title;
+  $('#mBody').innerHTML = '';
+  if (typeof body === 'string') $('#mBody').innerHTML = body; else $('#mBody').appendChild(body);
+  const bb = $('#mBtns'); bb.innerHTML = '';
+  (buttons || [['OK', null, 'primary']]).forEach(([label, fn, cls]) => {
+    const b = el('button', 'btn ' + (cls || ''), label);
+    b.onclick = () => { closeModal(); if (fn) fn(); };
+    bb.appendChild(b);
+  });
+  $('#modal').classList.remove('hidden'); modalOpen = true;
+}
+function closeModal() { $('#modal').classList.add('hidden'); modalOpen = false; }
+$('#modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+
+function bumpCash() {
+  const c = $('#cash'); c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump');
+}
+function confetti() {
+  const cols = ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#a855f7', '#facc15'];
+  for (let i = 0; i < 40; i++) {
+    const c = el('i', 'confetti');
+    c.style.left = (50 + (Math.random() - 0.5) * 60) + 'vw';
+    c.style.background = cols[i % cols.length];
+    c.style.setProperty('--dx', ((Math.random() - 0.5) * 300) + 'px');
+    c.style.animationDelay = (Math.random() * 0.2) + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 1800);
+  }
+}
+
+function airportSheet(c) {
+  const a = AP[c];
+  if (c === HUB) {
+    modal('🏠 Wien (VIE)', `<p>Dein Heimat-Drehkreuz. Alle Routen starten hier.</p><p>Flugzeuge: <b>${S.planes.length}</b> · Routen: <b>${S.routes.length}</b></p>`);
+    return;
+  }
+  const r = routeOf(c);
+  const need = minTierFor(a.d);
+  const hasRange = S.planes.some(p => TIER[p.t].range >= a.d);
+  const info = `<div class="sheet">
+    <div class="kv"><span>Entfernung</span><b>${km(a.d)}</b></div>
+    <div class="kv"><span>Ticketpreis</span><b>${money(ticket(a.d) * revMult())}</b></div>
+    <div class="kv"><span>Nachfrage</span><b>${'★'.repeat(Math.round(a.pop * 3 - 1))}</b></div>
+    <div class="kv"><span>Mindestens</span><b>${planeIcon(need.col, 18)} ${need.n}</b></div>
+    ${!hasRange && !r ? `<p class="warn">⚠️ Kein Flugzeug deiner Flotte hat genug Reichweite (${km(a.d)}).</p>` : ''}
+  </div>`;
+  if (r) {
+    modal(`${a.n} (${c})`, info + `<p>✅ Route ist bereits aktiv mit ${planesOn(c).length} Flugzeug(en).</p>`,
+      [['Schließen', null], ['Zur Route', () => { switchTab('routes'); const card = document.querySelector(`.rcard[data-c="${c}"]`); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 'primary']]);
+  } else {
+    modal(`${a.n} (${c})`, info, [['Abbrechen', null], [`Route eröffnen · ${money(routeCost(c))}`, () => openRoute(c), 'primary' + (S.cash < routeCost(c) ? ' poor' : '')]]);
+  }
+}
+
+function planePicker(c) {
+  const d = AP[c].d;
+  const box = el('div', 'picker');
+  const hs = hangar().filter(p => TIER[p.t].range >= d);
+  if (hs.length) {
+    box.appendChild(el('h4', '', 'Aus dem Hangar'));
+    hs.forEach(p => {
+      const row = el('div', 'prow', `${planeIcon(TIER[p.t].col)} <span>${TIER[p.t].n}</span>`);
+      const b = el('button', 'btn small primary', 'Zuweisen');
+      b.onclick = () => { closeModal(); assign(p, c); };
+      row.appendChild(b); box.appendChild(row);
+    });
+  }
+  box.appendChild(el('h4', '', 'Neu kaufen'));
+  TIERS.filter(t => t.range >= d).forEach(t => {
+    const row = el('div', 'prow', `${planeIcon(t.col)} <span>${t.n}<small>${t.seats} Sitze · ${km(t.range)}</small></span>`);
+    const cost = planeCost(t.id);
+    const b = el('button', 'btn small' + (S.cash >= cost ? ' primary' : ' poor'), money(cost));
+    b.dataset.cost = cost;
+    b.onclick = () => { closeModal(); buyPlane(t.id, c); };
+    row.appendChild(b); box.appendChild(row);
+  });
+  modal(`Flugzeug für ${AP[c].n}`, box, [['Schließen', null]]);
+}
+function routePicker(p) {
+  const box = el('div', 'picker');
+  const ok = S.routes.filter(r => AP[r.c].d <= TIER[p.t].range);
+  if (!ok.length) box.appendChild(el('p', '', 'Keine passende Route offen. Eröffne zuerst eine Route in Reichweite!'));
+  ok.forEach(r => {
+    const row = el('div', 'prow', `<span>Wien → ${AP[r.c].n}<small>${km(AP[r.c].d)} · ${planesOn(r.c).length} Flugzeug(e)</small></span>`);
+    const b = el('button', 'btn small primary', 'Zuweisen');
+    b.onclick = () => { closeModal(); assign(p, r.c); };
+    row.appendChild(b); box.appendChild(row);
+  });
+  modal(`${TIER[p.t].n} zuweisen`, box, [['Schließen', null]]);
+}
+
+// ----- Tabs -----
+let tab = 'routes';
+function switchTab(t) {
+  tab = t;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.id === 'tab-' + t));
+  renderAll();
+}
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+const cardRefs = new Map();
+function renderRoutes() {
+  const root = $('#tab-routes');
+  const scroll = root.scrollTop;
+  root.innerHTML = '';
+  cardRefs.clear();
+  if (!S.routes.length) root.appendChild(el('div', 'empty', '🗺️ Noch keine Routen. Tippe auf ein Ziel auf der Karte oder unten in der Liste!'));
+  for (const r of S.routes) {
+    const a = AP[r.c];
+    const card = el('div', 'rcard' + (r.mgr ? ' mgr' : ''));
+    card.dataset.c = r.c;
+    const ps = planesOn(r.c);
+    const perTrip = ps.reduce((s, p) => s + 2 * legRev(r.c, p.t), 0);
+    card.innerHTML = `<div class="rhead"><div><b>Wien → ${a.n}</b><small>${a.c} · ${km(a.d)} · ${money(perTrip)} pro Umlauf</small></div></div>`;
+    const go = el('button', 'btn go', 'ABFLUG');
+    go.onclick = e => { e.stopPropagation(); dispatchRoute(r.c); };
+    if (r.mgr) { go.className = 'btn mgrtag'; go.textContent = '👔 Auto'; go.disabled = true; }
+    card.querySelector('.rhead').appendChild(go);
+    const bars = [];
+    ps.forEach(p => {
+      const row = el('div', 'pbar');
+      row.innerHTML = `${planeIcon(TIER[p.t].col, 18)}<div class="track"><div class="fill"></div><span class="lbl"></span></div>`;
+      const x = el('button', 'x', '✕'); x.title = 'In den Hangar';
+      x.onclick = e => { e.stopPropagation(); unassign(p); };
+      row.appendChild(x);
+      card.appendChild(row);
+      bars.push({ p, fill: row.querySelector('.fill'), lbl: row.querySelector('.lbl'), x });
+    });
+    if (!ps.length) card.appendChild(el('div', 'noplane', 'Kein Flugzeug zugewiesen'));
+    const foot = el('div', 'rfoot');
+    const add = el('button', 'btn small ghost', '+ Flugzeug');
+    add.onclick = e => { e.stopPropagation(); planePicker(r.c); };
+    foot.appendChild(add);
+    if (!r.mgr) {
+      const m = el('button', 'btn small mgrbtn', `👔 Manager · ${money(mgrCost(r.c))}`);
+      m.dataset.cost = mgrCost(r.c);
+      m.onclick = e => { e.stopPropagation(); hireMgr(r.c); };
+      foot.appendChild(m);
+    }
+    card.appendChild(foot);
+    card.addEventListener('pointerdown', e => {
+      if (e.target.closest('button')) return;
+      boostRoute(r.c, e.clientX, e.clientY);
+      card.classList.remove('tapped'); void card.offsetWidth; card.classList.add('tapped');
+    });
+    root.appendChild(card);
+    cardRefs.set(r.c, { go, bars, mgr: r.mgr });
+  }
+  // Neue Ziele
+  const rest = DESTS.filter(a => !routeOf(a.c));
+  if (rest.length) {
+    root.appendChild(el('h3', 'sect', '🌍 Neue Ziele'));
+    rest.forEach(a => {
+      const need = minTierFor(a.d);
+      const row = el('div', 'drow' + (S.tut === 0 && a.c === 'SZG' ? ' hint' : ''));
+      row.innerHTML = `${planeIcon(need.col, 18)}<div><b>${a.n}</b> <small>${a.c} · ${km(a.d)} · ab ${need.n}</small></div>`;
+      const b = el('button', 'btn small', money(routeCost(a.c)));
+      b.dataset.cost = routeCost(a.c);
+      b.onclick = () => openRoute(a.c);
+      row.appendChild(b);
+      row.querySelector('div').onclick = () => airportSheet(a.c);
+      root.appendChild(row);
+    });
+  }
+  root.scrollTop = scroll;
+}
+function updateRouteCards() {
+  const tt = turnTime();
+  for (const [c, ref] of cardRefs) {
+    let ready = 0;
+    for (const b of ref.bars) {
+      const p = b.p;
+      let w = 0, txt = '';
+      if (p.st === 'ready') { ready++; w = 0; txt = ref.mgr ? 'Boarding…' : 'Bereit zum Abflug'; }
+      else if (p.st === 'out') { w = p.p * 50; txt = '→ ' + c; }
+      else if (p.st === 'turn') { w = 50; txt = 'Abfertigung in ' + c; }
+      else if (p.st === 'back') { w = 50 + p.p * 50; txt = '← Wien'; }
+      b.fill.style.width = w.toFixed(1) + '%';
+      if (b.lbl.textContent !== txt) b.lbl.textContent = txt;
+      b.x.style.visibility = p.st === 'ready' ? 'visible' : 'hidden';
+    }
+    if (!ref.mgr) {
+      ref.go.disabled = ready === 0;
+      ref.go.classList.toggle('pulse', ready > 0);
+      const t = ready > 1 ? `ABFLUG ×${ready}` : 'ABFLUG';
+      if (ref.go.textContent !== t) ref.go.textContent = t;
+    }
+  }
+  void tt;
+}
+
+function renderFleet() {
+  const root = $('#tab-fleet');
+  root.innerHTML = '';
+  root.appendChild(el('h3', 'sect', '🛒 Flugzeuge kaufen'));
+  TIERS.forEach(t => {
+    const cost = planeCost(t.id);
+    const card = el('div', 'tcard');
+    card.innerHTML = `<div class="tic" style="background:${t.col}22">${planeIcon(t.col, 34)}</div>
+      <div class="tinfo"><b>${t.n}</b> <span class="cnt">×${owned(t.id)}</span><small>${t.d}</small>
+      <div class="stats"><span>💺 ${t.seats}</span><span>📏 ${km(t.range)}</span><span>⚡ ${t.speed * 3} km/h</span><span>💶 ×${String(t.mult).replace('.', ',')}</span></div></div>`;
+    const b = el('button', 'btn buy', money(cost));
+    b.dataset.cost = cost;
+    b.onclick = () => buyPlane(t.id);
+    card.appendChild(b);
+    root.appendChild(card);
+  });
+  root.appendChild(el('h3', 'sect', `🏗️ Hangar (${hangar().length})`));
+  if (!hangar().length) root.appendChild(el('div', 'empty small', 'Alle Flugzeuge sind im Einsatz. 👍'));
+  hangar().forEach(p => {
+    const row = el('div', 'prow', `${planeIcon(TIER[p.t].col)} <span>${TIER[p.t].n}<small>Reichweite ${km(TIER[p.t].range)}</small></span>`);
+    const b = el('button', 'btn small primary', 'Zuweisen');
+    b.onclick = () => routePicker(p);
+    row.appendChild(b); root.appendChild(row);
+  });
+}
+function renderUpg() {
+  const root = $('#tab-upg');
+  root.innerHTML = '';
+  root.appendChild(el('div', 'statline', `Erlös ×${fmt2(revMult())} · Auslastung ${Math.round(loadF() * 100)} % · Bodenzeit ${fmt2(turnTime())} s · Tempo ×${fmt2(speedMult())}`));
+  UPGRADES.forEach(u => {
+    const lv = S.upg[u.id], max = lv >= u.max;
+    const card = el('div', 'ucard');
+    card.innerHTML = `<div class="uic">${u.ic}</div><div class="uinfo"><b>${u.n}</b> <span class="lv">Stufe ${lv}${u.max < 20 ? '/' + u.max : ''}</span><small>${u.d}</small></div>`;
+    const b = el('button', 'btn buy', max ? 'MAX' : money(upgCost(u)));
+    if (!max) b.dataset.cost = upgCost(u); else b.disabled = true;
+    b.onclick = () => buyUpg(u);
+    card.appendChild(b);
+    root.appendChild(card);
+  });
+}
+const fmt2 = x => x.toFixed(2).replace('.', ',');
+function renderAch() {
+  const root = $('#tab-ach');
+  root.innerHTML = '';
+  const n = starsAvail();
+  const pr = el('div', 'prestige');
+  pr.innerHTML = `<b>🚀 Investoren-Neustart</b><small>Ab 1 Mio € Umsatz in diesem Durchgang bekommst du Sterne. Jeder ⭐ = +10 % Erlös für immer.</small>
+    <div>Umsatz dieser Runde: <b>${money(S.run)}</b> → <b>${n} ⭐</b></div>`;
+  const b = el('button', 'btn ' + (n >= 1 ? 'primary' : ''), n >= 1 ? `Neustart für ${n} ⭐` : 'Noch nicht verfügbar');
+  b.disabled = n < 1; b.onclick = prestige;
+  pr.appendChild(b); root.appendChild(pr);
+  root.appendChild(el('h3', 'sect', `🏆 Erfolge ${achCount()}/${ACHIEVEMENTS.length} <small>(je +2 % Erlös)</small>`));
+  const grid = el('div', 'agrid');
+  ACHIEVEMENTS.forEach(a => {
+    grid.appendChild(el('div', 'ach' + (S.ach[a.id] ? ' got' : ''), `<span>${S.ach[a.id] ? '🏆' : '🔒'}</span><b>${a.n}</b><small>${a.d}</small>`));
+  });
+  root.appendChild(grid);
+  root.appendChild(el('div', 'stats2', `Flüge gesamt: <b>${thousands(S.flights)}</b> · Umsatz gesamt: <b>${money(S.total)}</b> · Turbo-Taps: <b>${thousands(S.taps)}</b>`));
+  const reset = el('button', 'btn small ghost danger', 'Spielstand löschen');
+  reset.onclick = () => modal('Spielstand löschen?', 'Alles geht verloren – auch Sterne und Erfolge.', [['Abbrechen', null], ['Löschen', () => { localStorage.removeItem(SAVE_KEY); S = newState(); buildRoutesL(); renderAll(); }, 'danger']]);
+  root.appendChild(reset);
+}
+function renderAll() {
+  if (tab === 'routes') renderRoutes(); else cardRefs.clear();
+  if (tab === 'fleet') renderFleet();
+  if (tab === 'upg') renderUpg();
+  if (tab === 'ach') renderAch();
+  updateAfford();
+  updateTut();
+  $('#stars').textContent = '⭐ ' + S.stars;
+  $('#stars').classList.toggle('hidden', S.stars === 0);
+  $('#sound').textContent = S.muted ? '🔇' : '🔊';
+  // Karte: Ziele, die man sich leisten kann und die in Reichweite sind
+  const maxRange = Math.max(0, ...S.planes.map(p => TIER[p.t].range));
+  for (const g of apL.children) {
+    const c = g.dataset.ap;
+    if (c === HUB) continue;
+    g.classList.toggle('canopen', !routeOf(c) && AP[c].d <= maxRange && S.cash >= routeCost(c));
+    g.classList.toggle('far', !routeOf(c) && AP[c].d > maxRange);
+    g.classList.toggle('tuthint', S.tut === 0 && c === 'SZG');
+  }
+}
+function updateAfford() {
+  document.querySelectorAll('[data-cost]').forEach(b => {
+    const ok = S.cash >= +b.dataset.cost;
+    b.classList.toggle('poor', !ok);
+    if (b.classList.contains('buy') || b.classList.contains('mgrbtn')) b.classList.toggle('primary', ok);
+  });
+  const anyUpg = UPGRADES.some(u => S.upg[u.id] < u.max && S.cash >= upgCost(u));
+  $('#upgDot').classList.toggle('hidden', !anyUpg || tab === 'upg');
+  const maxRange = Math.max(0, ...S.planes.map(p => TIER[p.t].range));
+  for (const g of apL.children) {
+    const c = g.dataset.ap;
+    if (c !== HUB) g.classList.toggle('canopen', !routeOf(c) && AP[c].d <= maxRange && S.cash >= routeCost(c));
+  }
+}
+
+const TUT = [
+  '👋 Willkommen, Chef! Tippe auf <b>Salzburg (SZG)</b> auf der Karte, um deine erste Route zu eröffnen.',
+  '✈️ Super! Drück jetzt auf <b>ABFLUG</b>, um dein Flugzeug zu starten.',
+  '⚡ Tipp: Tippe während des Flugs auf die <b>Routenkarte</b> oder das Flugzeug – das beschleunigt es!',
+  '💰 Geld verdient! Kauf dir unter <b>⚙️ Upgrades</b> höhere Ticketpreise.',
+  '👔 Stell einen <b>Manager</b> ein, dann fliegt die Route automatisch – sogar offline!',
+];
+let tutShown = -1;
+function updateTut() {
+  let t = S.tut;
+  if (t === 3 && S.cash < upgCost(UPGRADES[0])) t = -1; // warten bis leistbar
+  if (t === 4 && S.cash < mgrCost(S.routes[0] ? S.routes[0].c : 'SZG') * 0.6) t = -1;
+  if (t === tutShown) return;
+  tutShown = t;
+  const box = $('#tut');
+  if (t < 0 || t >= TUT.length) { box.classList.add('hidden'); return; }
+  box.innerHTML = TUT[t];
+  box.classList.remove('hidden');
+}
+
+const shownAch = new Set();
+function checkAch() {
+  if (S.tut === 2 && S.flights >= 6) S.tut = 3;
+  for (const a of ACHIEVEMENTS) {
+    if (S.ach[a.id] || !a.ok(S)) continue;
+    S.ach[a.id] = Date.now();
+    if (shownAch.has(a.id)) continue;
+    shownAch.add(a.id);
+    toast(`🏆 Erfolg: <b>${a.n}</b> – +2 % Erlös`, 'ach');
+    confetti();
+    beep(660, 0.1, 'triangle', 0.05); setTimeout(() => beep(990, 0.2, 'triangle', 0.05), 110);
+    if (tab === 'ach') renderAch();
+  }
+}
+
+$('#sound').addEventListener('click', () => { S.muted = !S.muted; $('#sound').textContent = S.muted ? '🔇' : '🔊'; if (!S.muted) sCoin(); });
+
+// ---------- Offline-Erträge ----------
+function applyOffline(showModal) {
+  const secs = Math.min(OFFLINE_CAP, Math.max(0, (Date.now() - (S.last || Date.now())) / 1000));
+  S.last = Date.now();
+  if (secs < 10) return;
+  const amt = idleRate() * secs;
+  if (amt <= 0) return;
+  earn(amt, true);
+  const mins = Math.round(secs / 60);
+  const dur = mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${Math.max(1, mins)} min`;
+  if (showModal) modal('🌙 Willkommen zurück!', `<p>Deine Manager waren fleißig. In <b>${dur}</b> haben sie verdient:</p><div class="bigmoney">+${money(amt)}</div>${secs >= OFFLINE_CAP ? '<p class="muted">(Maximal 2 Stunden werden angerechnet)</p>' : ''}`, [['Einsammeln 🪙', () => { confetti(); sBuy(); }, 'primary']]);
+  else toast(`🌙 Während du weg warst: +${money(amt)}`, 'good');
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) save();
+  else { applyOffline(false); lastT = performance.now(); }
+});
+window.addEventListener('pagehide', save);
+
+// ---------- Hauptschleife ----------
+let lastT = performance.now(), startT = performance.now(), acc = 0, uiAcc = 0;
+function frame(now) {
+  let dt = (now - lastT) / 1000; lastT = now;
+  if (dt > 0.25) dt = 0.25;
+  if (viewAnim) {
+    viewAnim.t = Math.min(1, viewAnim.t + dt / 0.6);
+    const e = 1 - Math.pow(1 - viewAnim.t, 3);
+    for (const k of ['cx', 'cy', 'w']) view[k] = viewAnim.from[k] + (viewAnim.to[k] - viewAnim.from[k]) * e;
+    applyView();
+    if (viewAnim.t >= 1) viewAnim = null;
+  }
+  step(dt);
+  drawPlanes();
+  updateFloaters(dt);
+  updateRouteCards();
+  uiAcc += dt; acc += dt;
+  if (uiAcc > 0.2) {
+    uiAcc = 0;
+    $('#cash').textContent = money(S.cash);
+    $('#rate').textContent = '+' + money(currentRate()) + '/s';
+    updateAfford(); updateTut();
+  }
+  if (acc > 5) { acc = 0; save(); checkAch(); }
+  else if (uiAcc === 0) checkAch();
+  requestAnimationFrame(frame);
+}
+
+// ---------- Start ----------
+S = load() || newState();
+Object.keys(S.ach).forEach(k => shownAch.add(k));
+buildMap();
+Object.assign(view, presetView('eu'));
+applyView();
+window.addEventListener('resize', applyView);
+buildRoutesL();
+renderAll();
+applyOffline(true);
+$('#cash').textContent = money(S.cash);
+requestAnimationFrame(frame);
+
+// Test-/Debug-Hook
+window.__game = { get S() { return S; }, step, boostRoute, openRoute, buyPlane, hireMgr, buyUpg, dispatchRoute, upgCost, mgrCost, currentRate, money, fmt, legRev, legTime, routeCost, planeCost, idleRate, save };
+})();
+</script>
+</body>
+</html>
