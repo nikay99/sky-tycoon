@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0ea5e9">
+<title>Sky Tycoon – Airline-Idle-Spiel</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E✈️%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --sky:#0ea5e9; --sky2:#38bdf8; --deep:#0c4a6e; --ink:#0f172a; --muted:#64748b;
+  --card:#ffffff; --bg:#e0f2fe; --ok:#22c55e; --gold:#f59e0b; --bad:#ef4444;
+  --radius:16px; --shadow:0 4px 14px rgba(2,132,199,.15);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;overscroll-behavior:none}
+button{font:inherit;cursor:pointer;border:0;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+#app{display:flex;flex-direction:column;height:100%;max-height:100dvh}
+#top{display:flex;align-items:center;gap:10px;padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top));background:linear-gradient(135deg,#0284c7,#0ea5e9 60%,#22d3ee);color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.15);z-index:5}
+.brand{font-weight:800;font-size:18px;white-space:nowrap}
+.money{flex:1;text-align:center;line-height:1.1}
+.cash{font-size:26px;font-weight:900;letter-spacing:.3px;text-shadow:0 2px 0 rgba(0,0,0,.15);transition:transform .1s}
+.cash.bump{transform:scale(1.08)}
+.ips{font-size:12px;opacity:.9}
+.topbtns{display:flex;gap:6px}
+.iconbtn{background:rgba(255,255,255,.2);color:#fff;width:38px;height:38px;border-radius:12px;font-size:18px}
+.iconbtn:active{transform:scale(.92)}
+#main{flex:1;display:flex;flex-direction:column;min-height:0}
+#mapWrap{position:relative;background:linear-gradient(#7dd3fc,#0ea5e9);flex:0 0 auto;overflow:hidden}
+#map{display:block;width:100%;height:auto;max-height:46vh}
+.goal{position:absolute;left:8px;right:8px;bottom:6px;margin:auto;max-width:520px;width:fit-content;background:rgba(15,23,42,.72);color:#fff;font-size:12px;padding:5px 10px;border-radius:12px;text-align:center;pointer-events:none;backdrop-filter:blur(3px)}
+.goal:empty{display:none}
+#panel{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--bg)}
+#tabs{display:flex;gap:4px;padding:6px 8px 0;overflow-x:auto}
+#tabs button{flex:1;background:#bae6fd;color:var(--deep);padding:9px 6px;border-radius:12px 12px 0 0;font-weight:700;font-size:13px;white-space:nowrap;position:relative}
+#tabs button.active{background:#fff;color:var(--sky)}
+#tabs button .dot{position:absolute;top:4px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+#buyBar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:#fff;font-size:12px;color:var(--muted)}
+#buyBar button{background:#f1f5f9;color:var(--ink);padding:5px 10px;border-radius:999px;font-weight:700;font-size:12px}
+#buyBar button.active{background:var(--sky);color:#fff}
+.tab{display:none;flex:1;overflow-y:auto;padding:8px 8px 24px;background:#fff;-webkit-overflow-scrolling:touch}
+.tab.active{display:block}
+.rcard{background:var(--card);border:2px solid #e0f2fe;border-radius:var(--radius);padding:10px;margin-bottom:8px;box-shadow:var(--shadow);transition:border-color .2s}
+.rcard.flash{animation:flash .8s}
+@keyframes flash{0%,100%{border-color:#e0f2fe}30%{border-color:var(--gold);box-shadow:0 0 0 4px rgba(245,158,11,.3)}}
+.rhead{display:flex;align-items:center;gap:8px}
+.rcode{font-weight:900;font-size:13px;background:var(--deep);color:#fff;border-radius:8px;padding:3px 6px}
+.rname{font-weight:800;font-size:16px;flex:1}
+.rdist{font-size:12px;color:var(--muted)}
+.rtier{font-size:11px;font-weight:800;color:#fff;border-radius:999px;padding:2px 8px}
+.rinfo{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted);margin:6px 0}
+.rinfo b{color:var(--ink)}
+.bar{height:10px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:6px 0}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sky2),var(--sky));border-radius:999px}
+.bar.mgr>i{background:linear-gradient(90deg,#86efac,var(--ok))}
+.rbtns{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px}
+.btn{border-radius:12px;padding:8px 6px;font-weight:800;font-size:13px;line-height:1.15;background:#e2e8f0;color:#94a3b8;transition:transform .06s}
+.btn small{display:block;font-weight:600;font-size:11px;opacity:.9}
+.btn:active{transform:scale(.95)}
+.btn.can{background:var(--ok);color:#fff;box-shadow:0 3px 0 #15803d}
+.btn.can:active{box-shadow:none;transform:translateY(3px)}
+.btn.go{background:var(--gold);color:#fff;box-shadow:0 3px 0 #b45309}
+.btn.go.pulse{animation:pulse 1s infinite}
+.btn.boost{background:var(--sky);color:#fff;box-shadow:0 3px 0 #0369a1}
+.btn.done{background:#dcfce7;color:#15803d;box-shadow:none;cursor:default}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.locked{opacity:.95;background:#f8fafc;border-style:dashed}
+.locked .rname{color:var(--muted)}
+.locked.next{border-color:var(--gold);border-style:solid;background:#fffbeb}
+.lockrow{display:flex;align-items:center;gap:8px;margin-top:6px}
+.lockrow .btn{flex:1}
+.ucard{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid #e0f2fe;border-radius:var(--radius);padding:10px;margin-bottom:8px;box-shadow:var(--shadow)}
+.ucard .ic{font-size:28px;width:40px;text-align:center}
+.ucard .tx{flex:1}
+.ucard .tx b{display:block}
+.ucard .tx small{color:var(--muted)}
+.ucard .btn{min-width:110px}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ach{border-radius:14px;padding:10px;background:#f1f5f9;color:#94a3b8;font-size:12px}
+.ach b{display:block;font-size:13px}
+.ach.got{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#78350f}
+.sectiontitle{font-weight:900;margin:6px 4px 8px;color:var(--deep)}
+.hint{font-size:12px;color:var(--muted);margin:0 4px 10px}
+/* Karte */
+.ocean{fill:transparent}
+.land{fill:#bbf7d0;stroke:#86efac;stroke-width:6;stroke-linejoin:round}
+.grid{stroke:rgba(255,255,255,.25);stroke-width:1;stroke-dasharray:4 6;fill:none}
+.route{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:8 6;opacity:.95;stroke-linecap:round}
+.route.idle{stroke:var(--gold);animation:dash 1s linear infinite}
+.route.ghost{stroke:rgba(255,255,255,.35);stroke-width:2;stroke-dasharray:3 7}
+@keyframes dash{to{stroke-dashoffset:-28}}
+.apt{cursor:pointer}
+.apt circle.dot{fill:#fff;stroke:var(--deep);stroke-width:3}
+.apt.hub circle.dot{fill:var(--gold);stroke:#fff;stroke-width:4}
+.apt.locked circle.dot{fill:#cbd5e1;stroke:#94a3b8}
+.apt.afford circle.dot{fill:var(--gold);animation:blink 1s infinite}
+.apt.idle circle.ring{stroke:var(--gold);stroke-width:4;fill:none;animation:ring 1s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes ring{from{transform:scale(.6);opacity:1}to{transform:scale(1.6);opacity:0}}
+@keyframes blink{50%{opacity:.4}}
+.apt text{font-size:15px;font-weight:800;fill:#0f172a;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+.apt.locked text{fill:#64748b}
+.plane{pointer-events:none}
+.pop{font-size:22px;font-weight:900;fill:#facc15;stroke:#78350f;stroke-width:4px;paint-order:stroke;pointer-events:none;animation:pop 1.1s ease-out forwards}
+@keyframes pop{0%{opacity:0;transform:translateY(6px) scale(.6)}15%{opacity:1;transform:translateY(0) scale(1.15)}100%{opacity:0;transform:translateY(-46px) scale(1)}}
+.pop{transform-box:fill-box;transform-origin:center}
+/* Toasts + Modal */
+#toasts{position:fixed;top:64px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:20}
+.toast{background:#0f172a;color:#fff;padding:9px 14px;border-radius:12px;font-size:14px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.25);animation:tin .3s ease-out, tout .4s ease-in 2.6s forwards;max-width:92vw}
+.toast.gold{background:linear-gradient(135deg,#f59e0b,#f97316)}
+@keyframes tin{from{transform:translateY(-14px);opacity:0}}
+@keyframes tout{to{transform:translateY(-14px);opacity:0}}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.modal.hidden{display:none}
+.modal .card{background:#fff;border-radius:20px;padding:20px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3);animation:tin .25s}
+.modal h2{margin:0 0 6px}
+.modal .big{font-size:30px;font-weight:900;color:var(--ok);margin:10px 0}
+.modal .row{display:flex;gap:8px;margin-top:12px}
+.modal .row .btn{flex:1;padding:12px}
+.danger{background:var(--bad)!important;color:#fff!important;box-shadow:0 3px 0 #991b1b!important}
+/* Desktop */
+@media (min-width:900px){
+  #main{flex-direction:row}
+  #mapWrap{flex:1.4;display:flex;align-items:center;justify-content:center}
+  #map{max-height:none;height:100%}
+  #panel{flex:1;max-width:520px;border-left:2px solid #bae6fd}
+  .cash{font-size:30px}
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="brand">✈️ <span>Sky Tycoon</span></div>
+    <div class="money">
+      <div id="cash" class="cash">€ 0</div>
+      <div id="ips" class="ips">Auto: € 0/s</div>
+    </div>
+    <div class="topbtns">
+      <button id="btnSound" class="iconbtn" title="Ton an/aus">🔊</button>
+      <button id="btnMenu" class="iconbtn" title="Menü">⚙️</button>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="mapWrap">
+      <svg id="map" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet" aria-label="Streckenkarte"></svg>
+      <div id="goal" class="goal"></div>
+    </section>
+
+    <section id="panel">
+      <nav id="tabs">
+        <button data-tab="routes" class="active">🗺️ Strecken</button>
+        <button data-tab="upgrades">⬆️ Upgrades</button>
+        <button data-tab="ach">🏆 Erfolge</button>
+        <button data-tab="alliance">🌐 Allianz</button>
+      </nav>
+      <div id="buyBar">
+        <span>Kaufen:</span>
+        <button data-buy="1" class="active">×1</button>
+        <button data-buy="10">×10</button>
+        <button data-buy="next">Meilenstein</button>
+        <button data-buy="max">Max</button>
+      </div>
+      <div id="tab-routes" class="tab active"></div>
+      <div id="tab-upgrades" class="tab"></div>
+      <div id="tab-ach" class="tab"></div>
+      <div id="tab-alliance" class="tab"></div>
+    </section>
+  </main>
+
+  <div id="toasts"></div>
+  <div id="modal" class="modal hidden"><div class="card" id="modalCard"></div></div>
+</div>
+<script>
+/* Airline Tycoon – Spiellogik (ohne DOM, auch in Node testbar) */
+const Core = (() => {
+  'use strict';
+
+  const BAL = {
+    startCash: 50,
+    rev0: 60, revGrowth: 3.2,      // Erlös/Flug (pro Flugzeug, Basistyp) der Strecke i
+    open0: 600, openGrowth: 7,   // Eröffnungskosten der Strecke i
+    plane0: 40, planeFrac: 0.3, planeGrowth: 1.15, tierPlaneMult: 2,
+    mgr0: 1500, mgrMult: 4,
+    tierUpMin: 25000, tierUpMult: 15, tierUpGrowth: 40,
+    baseLoad: 0.6, turnaround: 1.5, timeScale: 6,
+    offlineCapSec: 2 * 3600, offlineRate: 0.5,
+    milestones: [25, 50, 100, 150, 200, 300, 400, 500],
+    pointDiv: 1e7, pointBonus: 0.05,
+  };
+
+  const HUB = 'VIE';
+  const AIRPORTS = {
+    VIE: { name: 'Wien', lat: 48.11, lon: 16.57, x: 535, y: 222 },
+    MUC: { name: 'München', lat: 48.35, lon: 11.79, x: 468, y: 200 },
+    ZRH: { name: 'Zürich', lat: 47.46, lon: 8.55, x: 420, y: 238 },
+    FCO: { name: 'Rom', lat: 41.80, lon: 12.25, x: 488, y: 300 },
+    CDG: { name: 'Paris', lat: 49.01, lon: 2.55, x: 355, y: 205 },
+    LHR: { name: 'London', lat: 51.47, lon: -0.45, x: 318, y: 150 },
+    IST: { name: 'Istanbul', lat: 41.26, lon: 28.81, x: 625, y: 290 },
+    BCN: { name: 'Barcelona', lat: 41.30, lon: 2.08, x: 345, y: 300 },
+    MAD: { name: 'Madrid', lat: 40.47, lon: -3.56, x: 278, y: 330 },
+    CAI: { name: 'Kairo', lat: 30.12, lon: 31.40, x: 630, y: 405 },
+    DXB: { name: 'Dubai', lat: 25.25, lon: 55.36, x: 765, y: 410 },
+    JFK: { name: 'New York', lat: 40.64, lon: -73.78, x: 95, y: 255 },
+    BKK: { name: 'Bangkok', lat: 13.69, lon: 100.75, x: 880, y: 470 },
+    HND: { name: 'Tokio', lat: 35.55, lon: 139.78, x: 955, y: 270 },
+  };
+
+  const TIERS = [
+    { name: 'Propeller', short: 'Prop', seats: 50, range: 1300, speed: 500, color: '#22c55e', scale: 0.8 },
+    { name: 'Regionaljet', short: 'RJ', seats: 90, range: 2500, speed: 750, color: '#06b6d4', scale: 0.9 },
+    { name: 'Mittelstrecke', short: 'A320', seats: 180, range: 5000, speed: 830, color: '#3b82f6', scale: 1.0 },
+    { name: 'Langstrecke', short: 'WB', seats: 300, range: 10000, speed: 900, color: '#a855f7', scale: 1.15 },
+    { name: 'Jumbo', short: 'Jumbo', seats: 450, range: 14000, speed: 920, color: '#f43f5e', scale: 1.3 },
+  ];
+
+  const UPGRADES = [
+    { id: 'ticket', name: 'Ticketpreise', icon: '🎟️', desc: '+15 % Ticketerlös', base: 1500, growth: 9, max: 60 },
+    { id: 'catering', name: 'Bordverpflegung', icon: '🥐', desc: '+10 % Erlös durch Bordverkauf', base: 800, growth: 6, max: 60 },
+    { id: 'marketing', name: 'Marketing', icon: '📣', desc: '+4 % Auslastung (max. 98 %)', base: 500, growth: 7, max: 10 },
+    { id: 'turnaround', name: 'Schnellere Abfertigung', icon: '⏱️', desc: '−15 % Bodenzeit, −5 % Flugzeit', base: 3000, growth: 10, max: 10 },
+    { id: 'crew', name: 'Crew-Training', icon: '🧑‍✈️', desc: '+25 % Tipp-Boost, −3 % Flugzeit', base: 2000, growth: 8, max: 20 },
+  ];
+
+  function hav(a, b) {
+    const R = 6371, t = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * t, dLon = (b.lon - a.lon) * t;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  const ROUTES = Object.keys(AIRPORTS).filter(k => k !== HUB)
+    .map(code => ({ code, dist: Math.round(hav(AIRPORTS[HUB], AIRPORTS[code])) }))
+    .sort((a, b) => a.dist - b.dist);
+  ROUTES.forEach((r, i) => {
+    r.i = i;
+    r.name = AIRPORTS[r.code].name;
+    r.minTier = TIERS.findIndex(t => t.range >= r.dist);
+    r.openCost = i === 0 ? 0 : Math.round(BAL.open0 * Math.pow(BAL.openGrowth, i - 1));
+    r.baseRev = BAL.rev0 * Math.pow(BAL.revGrowth, i);
+    r.fare = r.baseRev / (TIERS[r.minTier].seats * BAL.baseLoad);
+    r.planeBase = i === 0 ? BAL.plane0 : r.openCost * BAL.planeFrac;
+    r.mgrCost = i === 0 ? BAL.mgr0 : r.openCost * BAL.mgrMult;
+  });
+  const RBY = Object.fromEntries(ROUTES.map(r => [r.code, r]));
+
+  const ACHIEVEMENTS = [
+    { id: 'first', name: 'Erster Abflug', desc: 'Starte deinen ersten Flug', test: s => s.flights >= 1 },
+    { id: 'taps100', name: 'Fleißige:r Dispatcher:in', desc: '100 Mal getippt', test: s => s.taps >= 100 },
+    { id: 'taps1000', name: 'Tower-Legende', desc: '1.000 Mal getippt', test: s => s.taps >= 1000 },
+    { id: 'mgr1', name: 'Autopilot', desc: 'Stelle deinen ersten Manager ein', test: s => countMgr(s) >= 1 },
+    { id: 'mgr5', name: 'Management-Team', desc: '5 Manager eingestellt', test: s => countMgr(s) >= 5 },
+    { id: 'routes3', name: 'Netzwerk', desc: '3 Strecken offen', test: s => countOpen(s) >= 3 },
+    { id: 'routes7', name: 'Europa-Carrier', desc: '7 Strecken offen', test: s => countOpen(s) >= 7 },
+    { id: 'routesAll', name: 'Weltairline', desc: 'Alle Strecken offen', test: s => countOpen(s) >= ROUTES.length },
+    { id: 'planes10', name: 'Kleine Flotte', desc: '10 Flugzeuge', test: s => countPlanes(s) >= 10 },
+    { id: 'planes50', name: 'Große Flotte', desc: '50 Flugzeuge', test: s => countPlanes(s) >= 50 },
+    { id: 'planes200', name: 'Mega-Flotte', desc: '200 Flugzeuge', test: s => countPlanes(s) >= 200 },
+    { id: 'jet', name: 'Düsenzeitalter', desc: 'Betreibe einen Regionaljet', test: s => maxTier(s) >= 1 },
+    { id: 'long', name: 'Langstrecke', desc: 'Betreibe einen Langstreckenjet', test: s => maxTier(s) >= 3 },
+    { id: 'jumbo', name: 'Königin der Lüfte', desc: 'Betreibe einen Jumbo', test: s => maxTier(s) >= 4 },
+    { id: 'earn1m', name: 'Millionär:in', desc: '1 Mio verdient', test: s => s.lifetime >= 1e6 },
+    { id: 'earn1b', name: 'Milliardär:in', desc: '1 Mrd verdient', test: s => s.lifetime >= 1e9 },
+    { id: 'alliance', name: 'Allianz gegründet', desc: 'Erster Neustart mit Allianz-Punkten', test: s => s.points >= 1 },
+  ];
+
+  const countOpen = s => ROUTES.filter(r => s.routes[r.code].open).length;
+  const countMgr = s => ROUTES.filter(r => s.routes[r.code].mgr).length;
+  const countPlanes = s => ROUTES.reduce((a, r) => a + s.routes[r.code].n, 0);
+  const maxTier = s => ROUTES.reduce((a, r) => s.routes[r.code].open ? Math.max(a, s.routes[r.code].tier) : a, -1);
+
+  function newState(keep) {
+    const s = {
+      v: 1, cash: BAL.startCash, lifetime: 0, allTime: 0, points: 0, taps: 0, flights: 0,
+      routes: {}, up: {}, ach: {}, lastSave: Date.now(), sound: true, buyMode: 1, started: Date.now(),
+    };
+    ROUTES.forEach(r => { s.routes[r.code] = { open: false, n: 0, tier: r.minTier, mgr: false, prog: 0, flying: false, paid: false }; });
+    UPGRADES.forEach(u => { s.up[u.id] = 0; });
+    const m = s.routes[ROUTES[0].code]; m.open = true; m.n = 1;
+    if (keep) Object.assign(s, keep);
+    return s;
+  }
+
+  function migrate(s) {
+    const d = newState();
+    for (const k of Object.keys(d)) if (s[k] === undefined) s[k] = d[k];
+    ROUTES.forEach(r => { if (!s.routes[r.code]) s.routes[r.code] = d.routes[r.code]; });
+    UPGRADES.forEach(u => { if (s.up[u.id] === undefined) s.up[u.id] = 0; });
+    return s;
+  }
+
+  // ---- Formeln ----
+  const loadFactor = s => Math.min(0.98, BAL.baseLoad + 0.04 * s.up.marketing);
+  const achCount = s => Object.keys(s.ach).length;
+  const globalMult = s => Math.pow(1.15, s.up.ticket) * (1 + 0.1 * s.up.catering) * (1 + BAL.pointBonus * s.points) * (1 + 0.01 * achCount(s));
+  const milestoneCount = n => BAL.milestones.filter(m => n >= m).length;
+  const nextMilestone = n => BAL.milestones.find(m => n < m) || null;
+  const revPerFlight = (s, r) => { const st = s.routes[r.code]; return st.n * TIERS[st.tier].seats * loadFactor(s) * r.fare * globalMult(s) * Math.pow(2, milestoneCount(st.n)); };
+  const flightTime = (s, r) => BAL.timeScale * r.dist / TIERS[s.routes[r.code].tier].speed * Math.pow(0.95, s.up.turnaround) * Math.pow(0.97, s.up.crew);
+  const groundTime = s => BAL.turnaround * Math.pow(0.85, s.up.turnaround);
+  const cycleTime = (s, r) => flightTime(s, r) + groundTime(s);
+  const tapBoost = s => 0.08 * (1 + 0.25 * s.up.crew);
+  const ratePerSec = (s, r) => revPerFlight(s, r) / cycleTime(s, r);
+  const incomePerSec = s => ROUTES.reduce((a, r) => { const st = s.routes[r.code]; return st.open && st.mgr ? a + ratePerSec(s, r) : a; }, 0);
+
+  function planeUnitBase(s, r) { const st = s.routes[r.code]; return r.planeBase * Math.pow(BAL.tierPlaneMult, st.tier - r.minTier); }
+  function planeCost(s, r, k) {
+    const g = BAL.planeGrowth, st = s.routes[r.code];
+    return planeUnitBase(s, r) * Math.pow(g, st.n) * (Math.pow(g, k) - 1) / (g - 1);
+  }
+  function maxPlanes(s, r) {
+    const g = BAL.planeGrowth, st = s.routes[r.code];
+    const first = planeUnitBase(s, r) * Math.pow(g, st.n);
+    return Math.max(0, Math.floor(Math.log(s.cash * (g - 1) / first + 1) / Math.log(g)));
+  }
+  function buyCount(s, r) { // je nach Kaufmodus
+    if (s.buyMode === 'max') return Math.max(1, maxPlanes(s, r));
+    if (s.buyMode === 'next') { const nm = nextMilestone(s.routes[r.code].n); return nm ? nm - s.routes[r.code].n : 1; }
+    return s.buyMode;
+  }
+  const tierUpCost = (s, r) => { const st = s.routes[r.code]; return Math.max(BAL.tierUpMin, r.openCost * BAL.tierUpMult) * Math.pow(BAL.tierUpGrowth, st.tier + 1 - r.minTier); };
+  const upgradeCost = (s, u) => u.base * Math.pow(u.growth, s.up[u.id]);
+  const pointsClaimable = s => Math.max(0, Math.floor(Math.sqrt(s.allTime / BAL.pointDiv)) - s.points);
+
+  // ---- Aktionen ----
+  function spend(s, c) { if (s.cash + 1e-9 < c) return false; s.cash -= c; return true; }
+  function openRoute(s, code) { const r = RBY[code], st = s.routes[code]; if (st.open || !spend(s, r.openCost)) return false; st.open = true; st.n = 1; st.tier = r.minTier; return true; }
+  function buyPlanes(s, code) { const r = RBY[code], st = s.routes[code]; if (!st.open) return 0; const k = buyCount(s, r); const before = milestoneCount(st.n); if (!spend(s, planeCost(s, r, k))) return 0; st.n += k; return milestoneCount(st.n) - before > 0 ? 2 : 1; }
+  function upgradeTier(s, code) { const r = RBY[code], st = s.routes[code]; if (!st.open || st.tier >= TIERS.length - 1 || !spend(s, tierUpCost(s, r))) return false; st.tier++; return true; }
+  function hireMgr(s, code) { const r = RBY[code], st = s.routes[code]; if (!st.open || st.mgr || !spend(s, r.mgrCost)) return false; st.mgr = true; if (!st.flying) { st.flying = true; st.prog = 0; st.paid = false; } return true; }
+  function buyUpgrade(s, id) { const u = UPGRADES.find(x => x.id === id); if (s.up[id] >= u.max || !spend(s, upgradeCost(s, u))) return false; s.up[id]++; return true; }
+  function tap(s, code) { // Abflug oder Boost
+    const st = s.routes[code]; if (!st.open) return null;
+    s.taps++;
+    if (!st.flying) { st.flying = true; st.prog = 0; st.paid = false; s.flights++; return 'start'; }
+    st.prog = Math.min(st.prog + tapBoost(s), 0.999999 + (st.mgr ? 1 : 0));
+    return 'boost';
+  }
+  function prestige(s) {
+    const p = pointsClaimable(s); if (p < 1) return false;
+    const keep = { points: s.points + p, allTime: s.allTime, ach: s.ach, sound: s.sound, taps: s.taps, flights: s.flights };
+    return newState(keep);
+  }
+
+  function earn(s, amt) { s.cash += amt; s.lifetime += amt; s.allTime += amt; }
+
+  // Phasen eines Umlaufs: Hinflug [0,a], Boden am Ziel [a,1-a], Rückflug [1-a,1]
+  function legFrac(s, r) { return (flightTime(s, r) / 2) / cycleTime(s, r); }
+  function planePos(s, r) { // liefert {t: 0..1 entlang Strecke, dir: 1|-1}
+    const st = s.routes[r.code]; if (!st.flying) return { t: 0, dir: 1, ground: true };
+    const a = legFrac(s, r), p = st.prog % 1;
+    if (p < a) return { t: p / a, dir: 1 };
+    if (p < 1 - a) return { t: 1, dir: -1, ground: true };
+    return { t: 1 - (p - (1 - a)) / a, dir: -1 };
+  }
+
+  function tick(s, dt, hooks) {
+    hooks = hooks || {};
+    for (const r of ROUTES) {
+      const st = s.routes[r.code];
+      if (!st.open || !st.flying) continue;
+      const cyc = cycleTime(s, r), a = legFrac(s, r);
+      let p = st.prog + dt / cyc;
+      for (let guard = 0; guard < 10; guard++) {
+        if (!st.paid && p >= a) { const v = revPerFlight(s, r) / 2; earn(s, v); st.paid = true; hooks.pay && hooks.pay(r.code, v, 'dest'); }
+        if (p < 1) break;
+        const v = revPerFlight(s, r) / 2; earn(s, v); st.paid = false; hooks.pay && hooks.pay(r.code, v, 'hub');
+        if (!st.mgr) { p = 0; st.flying = false; break; }
+        s.flights++;
+        p -= 1;
+        if (p >= 1) { const k = Math.floor(p); const v2 = revPerFlight(s, r) * k; earn(s, v2); s.flights += k; p -= k; }
+      }
+      st.prog = st.flying ? p : 0;
+    }
+    const got = [];
+    for (const a of ACHIEVEMENTS) if (!s.ach[a.id] && a.test(s)) { s.ach[a.id] = Date.now(); got.push(a); }
+    if (got.length && hooks.ach) got.forEach(hooks.ach);
+  }
+
+  function offline(s, now) {
+    const sec = Math.min(BAL.offlineCapSec, Math.max(0, (now - (s.lastSave || now)) / 1000));
+    return { sec, amount: incomePerSec(s) * sec * BAL.offlineRate };
+  }
+
+  return {
+    BAL, HUB, AIRPORTS, TIERS, UPGRADES, ROUTES, RBY, ACHIEVEMENTS,
+    newState, migrate, loadFactor, globalMult, revPerFlight, flightTime, cycleTime, ratePerSec, incomePerSec,
+    planeCost, maxPlanes, buyCount, tierUpCost, upgradeCost, pointsClaimable, milestoneCount, nextMilestone, tapBoost,
+    openRoute, buyPlanes, upgradeTier, hireMgr, buyUpgrade, tap, prestige, earn, tick, offline, planePos,
+    countOpen, countMgr, countPlanes,
+  };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+
+</script>
+<script>
+/* Airline Tycoon – UI */
+(() => {
+  'use strict';
+  const C = Core, $ = s => document.querySelector(s);
+  const SAVE_KEY = 'skyTycoon.save.v1';
+  const SVGNS = 'http://www.w3.org/2000/svg';
+
+  // ---------- Zahlenformat ----------
+  const UNITS = [[1e15, 'Brd'], [1e12, 'Bio'], [1e9, 'Mrd'], [1e6, 'Mio'], [1e3, 'k']];
+  function fmt(n) {
+    if (!isFinite(n)) return '∞';
+    if (n < 0) return '−' + fmt(-n);
+    if (n < 1000) return n < 10 && n % 1 ? n.toFixed(1).replace('.', ',') : Math.floor(n).toLocaleString('de-AT');
+    for (const [v, u] of UNITS) if (n >= v) { const x = n / v; return (x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)).replace('.', ',') + ' ' + u; }
+  }
+  const eur = n => '€ ' + fmt(n);
+  const secs = t => t < 60 ? t.toFixed(1).replace('.', ',') + ' s' : t < 3600 ? Math.floor(t / 60) + ' min ' + Math.floor(t % 60) + ' s' : Math.floor(t / 3600) + ' h ' + Math.floor(t % 3600 / 60) + ' min';
+
+  // ---------- Spielstand ----------
+  let S;
+  function load() {
+    try { const raw = localStorage.getItem(SAVE_KEY); if (raw) return C.migrate(JSON.parse(raw)); } catch (e) { console.warn('Spielstand defekt', e); }
+    return C.newState();
+  }
+  function save() { S.lastSave = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* voll/privat */ } }
+
+  // ---------- Sound ----------
+  let actx = null, lastSnd = 0;
+  function snd(type) {
+    if (!S.sound) return;
+    const now = performance.now(); if (type === 'coin' && now - lastSnd < 90) return; lastSnd = now;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+      const f = { coin: [988, 1319, 0.08], buy: [523, 784, 0.12], tap: [660, 880, 0.04], big: [523, 1047, 0.3] }[type] || [440, 660, .1];
+      o.type = type === 'tap' ? 'triangle' : 'sine';
+      o.frequency.setValueAtTime(f[0], t); o.frequency.exponentialRampToValueAtTime(f[1], t + f[2]);
+      g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.0001, t + f[2] + 0.12);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + f[2] + 0.15);
+    } catch (e) { /* kein Audio */ }
+  }
+
+  // ---------- Karte ----------
+  const mapEl = $('#map');
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+  const M = { routes: {}, apts: {}, planes: {}, pops: null };
+  const LAND = [
+    '0,95 70,72 150,82 215,118 205,170 165,205 152,250 132,300 100,332 60,342 28,382 0,392',
+    '292,140 300,104 352,92 410,110 470,84 560,70 650,58 760,66 860,86 960,104 1000,124 1000,330 985,300 950,322 930,380 905,420 885,505 845,445 805,430 775,445 740,392 700,382 670,338 640,336 600,336 565,312 538,350 520,345 505,305 470,282 430,300 395,290 345,292 315,360 250,372 238,322 258,290 268,250 288,205 300,182',
+    '262,385 330,372 400,362 470,372 560,384 605,380 660,438 700,465 690,505 640,520 590,548 540,552 470,540 400,530 330,500 280,460 250,432',
+    '650,372 722,362 782,392 805,425 765,472 702,486 668,432',
+    '296,128 316,120 330,140 326,172 306,176 300,152',
+  ];
+  function curve(code) {
+    const a = C.AIRPORTS[C.HUB], b = C.AIRPORTS[code];
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    const k = Math.min(0.25, 40 / len + 0.12);
+    return { a, b, c: { x: mx + dy * k * (dx > 0 ? -1 : 1), y: my - Math.abs(dx) * k * 0.9 } };
+  }
+  function bez(q, t) {
+    const u = 1 - t;
+    return {
+      x: u * u * q.a.x + 2 * u * t * q.c.x + t * t * q.b.x, y: u * u * q.a.y + 2 * u * t * q.c.y + t * t * q.b.y,
+      dx: 2 * u * (q.c.x - q.a.x) + 2 * t * (q.b.x - q.c.x), dy: 2 * u * (q.c.y - q.a.y) + 2 * t * (q.b.y - q.c.y),
+    };
+  }
+  const PLANE_SCALE = window.matchMedia('(max-width: 600px)').matches ? 1.5 : 1.1;
+  const PLANE_PATH = 'M16,0 C16,-2 13,-3 10,-3 L3,-3 L-4,-14 L-8,-14 L-4,-3 L-11,-3 L-14,-8 L-17,-8 L-15,0 L-17,8 L-14,8 L-11,3 L-4,3 L-8,14 L-4,14 L3,3 L10,3 C13,3 16,2 16,0 Z';
+  function buildMap() {
+    mapEl.innerHTML = '';
+    const defs = el('defs', {}, mapEl);
+    const g = el('linearGradient', { id: 'og', x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+    el('stop', { offset: 0, 'stop-color': '#7dd3fc' }, g); el('stop', { offset: 1, 'stop-color': '#0ea5e9' }, g);
+    el('rect', { x: 0, y: 0, width: 1000, height: 560, class: 'ocean' }, mapEl);
+    for (let x = 50; x < 1000; x += 100) el('line', { x1: x, y1: 0, x2: x, y2: 560, class: 'grid' }, mapEl);
+    for (let y = 40; y < 560; y += 80) el('line', { x1: 0, y1: y, x2: 1000, y2: y, class: 'grid' }, mapEl);
+    LAND.forEach(p => el('polygon', { points: p, class: 'land' }, mapEl));
+    const rl = el('g', {}, mapEl);
+    C.ROUTES.forEach(r => {
+      const q = curve(r.code);
+      M.routes[r.code] = el('path', { d: `M${q.a.x},${q.a.y} Q${q.c.x},${q.c.y} ${q.b.x},${q.b.y}`, class: 'route ghost' }, rl);
+      M.routes[r.code]._q = q;
+    });
+    const al = el('g', {}, mapEl);
+    const codes = [C.HUB, ...C.ROUTES.map(r => r.code)];
+    codes.forEach(code => {
+      const a = C.AIRPORTS[code];
+      const gr = el('g', { class: 'apt' + (code === C.HUB ? ' hub' : ''), transform: `translate(${a.x},${a.y})`, 'data-code': code }, al);
+      el('circle', { r: 22, fill: 'transparent' }, gr); // größere Tippfläche
+      el('circle', { r: 13, class: 'ring' }, gr);
+      el('circle', { r: code === C.HUB ? 10 : 7, class: 'dot' }, gr);
+      const t = el('text', { x: 0, y: -14, 'text-anchor': 'middle' }, gr);
+      t.textContent = code === C.HUB ? 'Wien' : a.name;
+      M.apts[code] = gr;
+      gr.addEventListener('pointerdown', ev => { ev.preventDefault(); onAirport(code); });
+    });
+    const pl = el('g', {}, mapEl);
+    C.ROUTES.forEach(r => {
+      const gp = el('g', { class: 'plane', visibility: 'hidden' }, pl);
+      M.planes[r.code] = { g: gp, body: el('path', { d: PLANE_PATH, fill: '#fff', stroke: '#0f172a', 'stroke-width': 1.5 }, gp) };
+    });
+    M.pops = el('g', {}, mapEl);
+  }
+  function updateMapStatic() {
+    C.ROUTES.forEach(r => {
+      const st = S.routes[r.code], p = M.routes[r.code], ap = M.apts[r.code];
+      p.setAttribute('class', 'route' + (st.open ? (st.flying ? '' : ' idle') : ' ghost'));
+      const afford = !st.open && S.cash >= r.openCost && isNextLocked(r);
+      ap.setAttribute('class', 'apt' + (st.open ? (st.flying ? '' : ' idle') : afford ? ' locked afford' : ' locked'));
+      const tier = C.TIERS[st.tier];
+      M.planes[r.code].body.setAttribute('fill', tier.color);
+      M.planes[r.code]._scale = tier.scale;
+    });
+  }
+  function updatePlanes() {
+    C.ROUTES.forEach(r => {
+      const st = S.routes[r.code], P = M.planes[r.code];
+      if (!st.open) { P.g.setAttribute('visibility', 'hidden'); return; }
+      const pos = C.planePos(S, r), q = M.routes[r.code]._q, b = bez(q, pos.t);
+      let ang = Math.atan2(b.dy, b.dx) * 180 / Math.PI; if (pos.dir < 0) ang += 180;
+      P.g.setAttribute('visibility', pos.ground && !st.flying ? 'hidden' : 'visible');
+      P.g.setAttribute('transform', `translate(${b.x.toFixed(1)},${b.y.toFixed(1)}) rotate(${ang.toFixed(1)}) scale(${(pos.ground ? 0.8 : 1.15) * (P._scale || 1) * PLANE_SCALE})`);
+    });
+  }
+  const lastPop = {};
+  function pop(code, amount) {
+    const now = performance.now(), key = code; if (lastPop[key] && now - lastPop[key] < 250) return; lastPop[key] = now;
+    const a = C.AIRPORTS[code];
+    const t = el('text', { x: a.x + (Math.random() * 30 - 15), y: a.y - 22, class: 'pop', 'text-anchor': 'middle' }, M.pops);
+    t.textContent = '+' + fmt(amount);
+    setTimeout(() => t.remove(), 1150);
+  }
+
+  // ---------- Strecken-Liste ----------
+  const R = {}; // DOM-Refs pro Strecke
+  let structKey = '';
+  function isNextLocked(r) { const first = C.ROUTES.find(x => !S.routes[x.code].open); return first && first.code === r.code; }
+  function routesStructKey() { return C.ROUTES.map(r => { const s = S.routes[r.code]; return (s.open ? 1 : 0) + '' + (s.mgr ? 1 : 0) + s.tier; }).join('|') + S.buyMode; }
+  function renderRoutes() {
+    const box = $('#tab-routes'); box.innerHTML = '';
+    let shownLocked = 0;
+    C.ROUTES.forEach(r => {
+      const st = S.routes[r.code], tier = C.TIERS[st.tier];
+      const d = document.createElement('div');
+      d.dataset.code = r.code; d.id = 'card-' + r.code;
+      if (!st.open) {
+        if (shownLocked >= 2) return;
+        shownLocked++;
+        const next = shownLocked === 1;
+        d.className = 'rcard locked' + (next ? ' next' : '');
+        d.innerHTML = `<div class="rhead"><span class="rcode">${r.code}</span><span class="rname">${next ? r.name : '🔒 ' + r.name}</span><span class="rdist">${fmt(r.dist)} km</span></div>
+          <div class="rinfo">benötigt: <b>${C.TIERS[r.minTier].name}</b> (Reichweite ${fmt(C.TIERS[r.minTier].range)} km) · ca. <b>${eur(r.baseRev)}</b>/Flug</div>
+          ${next ? `<div class="lockrow"><button class="btn" data-act="open">Strecke eröffnen<small>${eur(r.openCost)}</small></button></div>` : ''}`;
+        box.appendChild(d);
+        R[r.code] = { card: d, open: d.querySelector('[data-act=open]') };
+        return;
+      }
+      d.className = 'rcard';
+      const canTier = st.tier < C.TIERS.length - 1;
+      d.innerHTML = `<div class="rhead"><span class="rcode">${r.code}</span><span class="rname">${r.name}</span><span class="rtier" style="background:${tier.color}">${tier.name}</span></div>
+        <div class="rinfo"><span>✈️ <b data-f="n"></b> Flugzeuge</span><span>💶 <b data-f="rev"></b>/Flug</span><span>⏱️ <b data-f="time"></b></span><span>📏 ${fmt(r.dist)} km</span><span data-f="ms"></span></div>
+        <div class="bar${st.mgr ? ' mgr' : ''}"><i></i></div>
+        <div class="rbtns">
+          <button class="btn go" data-act="go"></button>
+          <button class="btn" data-act="buy"></button>
+          ${st.mgr ? '<button class="btn done">🤖 Manager<small>fliegt automatisch</small></button>' : '<button class="btn" data-act="mgr"></button>'}
+        </div>
+        ${canTier ? `<div style="margin-top:6px"><button class="btn" data-act="tier" style="width:100%"></button></div>` : ''}`;
+      box.appendChild(d);
+      R[r.code] = {
+        card: d, bar: d.querySelector('.bar>i'), go: d.querySelector('[data-act=go]'), buy: d.querySelector('[data-act=buy]'),
+        mgr: d.querySelector('[data-act=mgr]'), tier: d.querySelector('[data-act=tier]'),
+        n: d.querySelector('[data-f=n]'), rev: d.querySelector('[data-f=rev]'), time: d.querySelector('[data-f=time]'), ms: d.querySelector('[data-f=ms]'),
+      };
+    });
+    structKey = routesStructKey();
+    updateRoutesDyn(true);
+  }
+  function setBtn(b, html, can, extra) { if (!b) return; if (b._h !== html) { b.innerHTML = html; b._h = html; } const cls = 'btn' + (extra ? ' ' + extra : can ? ' can' : ''); if (b.className !== cls) b.className = cls; }
+  function updateRoutesDyn(full) {
+    C.ROUTES.forEach(r => {
+      const st = S.routes[r.code], x = R[r.code]; if (!x || !x.card.isConnected) return;
+      if (!st.open) { if (x.open) setBtn(x.open, `Strecke eröffnen<small>${eur(r.openCost)}</small>`, S.cash >= r.openCost); return; }
+      const pr = st.flying ? Math.min(1, st.prog % 1 || (st.prog >= 1 ? 1 : 0)) : 0;
+      x.bar.style.width = (pr * 100).toFixed(1) + '%';
+      if (!full && !tickUI) return;
+      x.n.textContent = fmt(st.n); x.rev.textContent = eur(C.revPerFlight(S, r)); x.time.textContent = secs(C.cycleTime(S, r));
+      const nm = C.nextMilestone(st.n); x.ms.innerHTML = nm ? `🏁 bei <b>${nm}</b>: Erlös ×2` : '🏁 alle Meilensteine';
+      if (st.mgr) setBtn(x.go, '⚡ Boost<small>schneller ankommen</small>', true, 'boost');
+      else if (st.flying) setBtn(x.go, '⚡ Boost<small>tippen = schneller</small>', true, 'boost');
+      else setBtn(x.go, '🛫 Abflug!<small>tippen zum Starten</small>', true, 'go pulse');
+      const k = C.buyCount(S, r), c = C.planeCost(S, r, k);
+      setBtn(x.buy, `+${k} Flugzeug${k > 1 ? 'e' : ''}<small>${eur(c)}</small>`, S.cash >= c);
+      if (x.mgr) setBtn(x.mgr, `🤖 Manager<small>${eur(r.mgrCost)}</small>`, S.cash >= r.mgrCost);
+      if (x.tier) { const nt = C.TIERS[st.tier + 1], tc = C.tierUpCost(S, r); setBtn(x.tier, `⬆️ Flotte auf ${nt.name} umrüsten (${nt.seats} Sitze, ${nt.speed} km/h) · ${eur(tc)}`, S.cash >= tc); }
+    });
+  }
+
+  // ---------- Upgrades / Erfolge / Allianz ----------
+  function renderUpgrades() {
+    const box = $('#tab-upgrades');
+    box.innerHTML = `<div class="sectiontitle">Airline-Upgrades</div><div class="hint">Gelten für alle Strecken. Auslastung: <b id="lf"></b> · Erlös-Multiplikator: <b id="gm"></b></div>` +
+      C.UPGRADES.map(u => `<div class="ucard"><div class="ic">${u.icon}</div><div class="tx"><b>${u.name} <span data-lv="${u.id}"></span></b><small>${u.desc}</small></div><button class="btn" data-up="${u.id}"></button></div>`).join('') +
+      `<div class="sectiontitle">Flugzeugtypen</div><div class="hint">Lange Strecken brauchen Reichweite. Rüste die Flotte einer Strecke in der Streckenkarte um.</div>` +
+      C.TIERS.map(t => `<div class="ucard"><div class="ic" style="color:${t.color}">✈︎</div><div class="tx"><b>${t.name}</b><small>${t.seats} Sitze · ${t.speed} km/h · Reichweite ${fmt(t.range)} km</small></div></div>`).join('');
+    updateUpgradesDyn();
+  }
+  function updateUpgradesDyn() {
+    const lf = $('#lf'); if (lf) { lf.textContent = Math.round(C.loadFactor(S) * 100) + ' %'; $('#gm').textContent = '×' + fmt(C.globalMult(S)); }
+    C.UPGRADES.forEach(u => {
+      const b = document.querySelector(`[data-up=${u.id}]`), lv = document.querySelector(`[data-lv=${u.id}]`); if (!b) return;
+      lv.textContent = `Stufe ${S.up[u.id]}${S.up[u.id] >= u.max ? ' (max)' : ''}`;
+      if (S.up[u.id] >= u.max) setBtn(b, 'Maximal', false, 'done');
+      else { const c = C.upgradeCost(S, u); setBtn(b, `Kaufen<small>${eur(c)}</small>`, S.cash >= c); }
+    });
+  }
+  function renderAch() {
+    const n = Object.keys(S.ach).length;
+    $('#tab-ach').innerHTML = `<div class="sectiontitle">Erfolge ${n}/${C.ACHIEVEMENTS.length}</div><div class="hint">Jeder Erfolg gibt dauerhaft +1 % Erlös (aktuell +${n} %).</div><div class="agrid">` +
+      C.ACHIEVEMENTS.map(a => `<div class="ach ${S.ach[a.id] ? 'got' : ''}"><b>${S.ach[a.id] ? '🏆' : '🔒'} ${a.name}</b>${a.desc}</div>`).join('') + '</div>';
+  }
+  function renderAlliance() {
+    const cl = C.pointsClaimable(S);
+    $('#tab-alliance').innerHTML = `<div class="sectiontitle">🌐 Allianz (Neustart-Bonus)</div>
+      <div class="hint">Gründe eine Allianz: Du startest neu, behältst aber Allianz-Punkte. Jeder Punkt gibt dauerhaft <b>+5 % Erlös</b>. Erfolge bleiben erhalten.</div>
+      <div class="ucard"><div class="ic">⭐</div><div class="tx"><b>Deine Punkte: ${fmt(S.points)}</b><small>Bonus aktuell: +${fmt(S.points * 5)} %</small></div></div>
+      <div class="ucard"><div class="ic">🎁</div><div class="tx"><b>Bei Neustart: +<span id="claim">${fmt(cl)}</span> Punkte</b><small>Insgesamt verdient: ${eur(S.allTime)} · erster Punkt ab ${eur(C.BAL.pointDiv)}</small></div>
+      <button class="btn ${cl >= 1 ? 'can' : ''}" id="btnPrestige">Neustart<small>${cl >= 1 ? 'jetzt möglich' : 'noch nicht'}</small></button></div>`;
+  }
+
+  // ---------- Hinweise / Ziele ----------
+  function goalText() {
+    const m = S.routes[C.ROUTES[0].code];
+    if (S.flights < 1) return '👆 Tippe auf <b>🛫 Abflug!</b> – dein erster Flug nach München';
+    if (m.n < 3 && !m.mgr) return '💶 Kaufe mehr Flugzeuge: mehr Flieger = mehr Erlös pro Flug';
+    if (!m.mgr && S.cash < C.ROUTES[0].mgrCost) return `⚡ Tippe Boost & Abflug! Ziel: Manager für München (${eur(C.ROUTES[0].mgrCost)})`;
+    if (!m.mgr) return '🤖 Stelle einen Manager ein – dann fliegt München von allein';
+    const nxt = C.ROUTES.find(r => !S.routes[r.code].open);
+    if (nxt && C.countOpen(S) < 3) return `🗺️ Nächstes Ziel: Strecke nach <b>${nxt.name}</b> eröffnen (${eur(nxt.openCost)})`;
+    const idle = C.ROUTES.find(r => S.routes[r.code].open && !S.routes[r.code].flying);
+    if (idle) return `🛫 ${idle.name} wartet – tippe auf Abflug oder den Flughafen`;
+    return '';
+  }
+
+  // ---------- Aktionen ----------
+  function afterChange(msg) {
+    snd('buy');
+    if (routesStructKey() !== structKey) renderRoutes(); else updateRoutesDyn(true);
+    updateMapStatic(); updateUpgradesDyn(); save();
+    if (msg) toast(msg);
+  }
+  function onRouteAction(code, act, card) {
+    const r = C.RBY[code];
+    if (act === 'go') { const res = C.tap(S, code); snd('tap'); if (res === 'start') updateMapStatic(); bumpBtn(card.querySelector('[data-act=go]')); return; }
+    if (act === 'buy') { const res = C.buyPlanes(S, code); if (res) { afterChange(res === 2 ? `🏁 Meilenstein ${r.name}: Erlös ×2!` : null); if (res === 2) { card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash'); snd('big'); } } else nope(); return; }
+    if (act === 'mgr') { if (C.hireMgr(S, code)) afterChange(`🤖 Manager für ${r.name} eingestellt – fliegt jetzt automatisch!`); else nope(); return; }
+    if (act === 'tier') { if (C.upgradeTier(S, code)) afterChange(`⬆️ ${r.name} fliegt jetzt mit ${C.TIERS[S.routes[code].tier].name}!`); else nope(); return; }
+    if (act === 'open') { if (C.openRoute(S, code)) { afterChange(`🗺️ Neue Strecke: Wien – ${r.name}!`); snd('big'); } else nope(); return; }
+  }
+  function onAirport(code) {
+    if (code === C.HUB) return;
+    const st = S.routes[code];
+    if (st.open) { C.tap(S, code); snd('tap'); updateMapStatic(); return; }
+    switchTab('routes');
+    const c = document.getElementById('card-' + code);
+    if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
+    else toast(`🔒 ${C.AIRPORTS[code].name}: erst die vorherigen Strecken eröffnen`);
+  }
+  function bumpBtn(b) { if (!b) return; b.style.transform = 'scale(.93)'; setTimeout(() => b.style.transform = '', 80); }
+  function nope() { if (navigator.vibrate) navigator.vibrate(30); }
+
+  function toast(html, gold) {
+    const t = document.createElement('div'); t.className = 'toast' + (gold ? ' gold' : ''); t.innerHTML = html;
+    $('#toasts').appendChild(t); setTimeout(() => t.remove(), 3100);
+  }
+  function modal(html) { $('#modalCard').innerHTML = html; $('#modal').classList.remove('hidden'); }
+  function closeModal() { $('#modal').classList.add('hidden'); }
+
+  let curTab = 'routes';
+  function switchTab(tab) {
+    curTab = tab;
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + tab));
+    $('#buyBar').style.display = tab === 'routes' ? '' : 'none';
+    if (tab === 'upgrades') renderUpgrades();
+    if (tab === 'ach') renderAch();
+    if (tab === 'alliance') renderAlliance();
+  }
+
+  function bindUI() {
+    $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) switchTab(b.dataset.tab); });
+    $('#buyBar').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const v = b.dataset.buy; S.buyMode = (v === 'max' || v === 'next') ? v : +v;
+      document.querySelectorAll('#buyBar button').forEach(x => x.classList.toggle('active', x === b));
+      updateRoutesDyn(true);
+    });
+    $('#tab-routes').addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      const card = b.closest('.rcard'); onRouteAction(card.dataset.code, b.dataset.act, card);
+    });
+    $('#tab-upgrades').addEventListener('click', e => {
+      const b = e.target.closest('[data-up]'); if (!b) return;
+      const u = C.UPGRADES.find(x => x.id === b.dataset.up);
+      if (C.buyUpgrade(S, u.id)) afterChange(`${u.icon} ${u.name} → Stufe ${S.up[u.id]}`); else nope();
+    });
+    $('#tab-alliance').addEventListener('click', e => {
+      if (!e.target.closest('#btnPrestige')) return;
+      const cl = C.pointsClaimable(S); if (cl < 1) { toast('Noch keine Allianz-Punkte – verdiene mehr!'); return; }
+      modal(`<h2>🌐 Allianz gründen?</h2><p>Du startest neu (Geld, Strecken, Upgrades weg) und bekommst <b>${fmt(cl)} Allianz-Punkte</b> = dauerhaft +${fmt(cl * 5)} % Erlös.</p><div class="row"><button class="btn" data-m="close">Abbrechen</button><button class="btn can" data-m="prestige">Neustart!</button></div>`);
+    });
+    $('#btnSound').addEventListener('click', () => { S.sound = !S.sound; $('#btnSound').textContent = S.sound ? '🔊' : '🔇'; save(); });
+    $('#btnMenu').addEventListener('click', () => {
+      modal(`<h2>⚙️ Menü</h2><p style="text-align:left;font-size:14px;line-height:1.6">✈️ Flüge: <b>${fmt(S.flights)}</b><br>👆 Tipps: <b>${fmt(S.taps)}</b><br>💶 Verdient (dieser Lauf): <b>${eur(S.lifetime)}</b><br>🌐 Allianz-Punkte: <b>${fmt(S.points)}</b><br>⏱️ Offline-Erlös: 50 %, max. 2 h (nur Strecken mit Manager)</p>
+        <div class="row"><button class="btn danger" data-m="reset">Spielstand löschen</button><button class="btn can" data-m="close">Weiter</button></div>`);
+    });
+    $('#modal').addEventListener('click', e => {
+      const b = e.target.closest('[data-m]'); if (!b) { if (e.target.id === 'modal') closeModal(); return; }
+      const m = b.dataset.m;
+      if (m === 'close') closeModal();
+      if (m === 'collect') { closeModal(); }
+      if (m === 'reset') { modal(`<h2>Wirklich löschen?</h2><p>Der gesamte Fortschritt geht verloren.</p><div class="row"><button class="btn" data-m="close">Nein</button><button class="btn danger" data-m="reset2">Ja, löschen</button></div>`); }
+      if (m === 'reset2') { localStorage.removeItem(SAVE_KEY); S = C.newState(); closeModal(); fullRender(); toast('Neues Spiel gestartet'); }
+      if (m === 'prestige') { const ns = C.prestige(S); if (ns) { S = ns; save(); closeModal(); fullRender(); toast('🌐 Allianz gegründet! Dauerhafter Bonus aktiv', true); snd('big'); } }
+    });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) save(); else resumeFromHidden(); });
+    window.addEventListener('pagehide', save);
+  }
+
+  // ---------- Loop ----------
+  let last = performance.now(), uiAcc = 0, tickUI = false, saveAcc = 0, hiddenAt = 0;
+  const hooks = {
+    pay: (code, v, at) => { pop(at === 'dest' ? code : C.HUB, v); snd('coin'); const c = $('#cash'); c.classList.add('bump'); setTimeout(() => c.classList.remove('bump'), 100); if (at === 'hub' && !S.routes[code].mgr) updateMapStatic(); },
+    ach: a => { toast(`🏆 Erfolg: <b>${a.name}</b> (+1 % Erlös)`, true); snd('big'); if (curTab === 'ach') renderAch(); },
+  };
+  function frame(now) {
+    let dt = (now - last) / 1000; last = now;
+    if (dt > 0) {
+      dt = Math.min(dt, 3600);
+      C.tick(S, dt, hooks);
+    }
+    uiAcc += dt; saveAcc += dt; tickUI = false;
+    if (uiAcc > 0.12) { uiAcc = 0; tickUI = true; }
+    updatePlanes();
+    updateRoutesDyn(false);
+    if (tickUI) {
+      $('#cash').textContent = eur(S.cash);
+      $('#ips').textContent = `Auto: ${eur(C.incomePerSec(S))}/s`;
+      $('#goal').innerHTML = goalText();
+      updateMapStatic();
+      if (curTab === 'upgrades') updateUpgradesDyn();
+      const anyUp = C.UPGRADES.some(u => S.up[u.id] < u.max && S.cash >= C.upgradeCost(S, u));
+      const tb = document.querySelector('[data-tab=upgrades]');
+      if (anyUp && !tb.querySelector('.dot')) tb.insertAdjacentHTML('beforeend', '<span class="dot"></span>');
+      if (!anyUp && tb.querySelector('.dot')) tb.querySelector('.dot').remove();
+      const ab = document.querySelector('[data-tab=alliance]'), canP = C.pointsClaimable(S) >= 1;
+      if (canP && !ab.querySelector('.dot')) ab.insertAdjacentHTML('beforeend', '<span class="dot"></span>');
+    }
+    if (saveAcc > 5) { saveAcc = 0; save(); }
+    requestAnimationFrame(frame);
+  }
+  function resumeFromHidden() { last = performance.now(); }
+
+  function offlineCheck() {
+    const off = C.offline(S, Date.now());
+    if (off.sec > 30 && off.amount > 0) {
+      C.earn(S, off.amount);
+      modal(`<h2>✈️ Willkommen zurück!</h2><p>Deine Manager waren ${secs(off.sec)} fleißig (50 % Offline-Erlös)${off.sec >= C.BAL.offlineCapSec ? ' (max. 2 h)' : ''}.</p><div class="big">+${eur(off.amount)}</div><div class="row"><button class="btn can" data-m="collect">Einsammeln</button></div>`);
+    }
+  }
+  function fullRender() {
+    $('#btnSound').textContent = S.sound ? '🔊' : '🔇';
+    document.querySelectorAll('#buyBar button').forEach(x => x.classList.toggle('active', String(S.buyMode) === x.dataset.buy));
+    renderRoutes(); updateMapStatic(); switchTab(curTab);
+  }
+
+  S = load();
+  buildMap(); bindUI(); offlineCheck(); fullRender(); save();
+  requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+  window.__game = { get S() { return S; }, C, save, fmt }; // für Tests
+})();
+
+</script>
+</body>
+</html>
